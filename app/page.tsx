@@ -1,19 +1,60 @@
-import { Button } from "@/components/ui/button"
+"use client"
+
+import { useState, useCallback, useRef } from "react"
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable"
+import { StickerCanvas } from "@/components/sticker-canvas"
+import { EmojiTray } from "@/components/emoji-tray"
+import type { StickerData } from "@/components/sticker"
+
+let idCounter = 0
+function nextId() {
+  return `sticker-${++idCounter}`
+}
 
 export default function Page() {
+  const [stickers, setStickers] = useState<StickerData[]>([])
+  const zIndexRef = useRef(1)
+
+  const bumpZIndex = useCallback(() => {
+    zIndexRef.current += 1
+    return zIndexRef.current
+  }, [])
+
+  const addSticker = useCallback(
+    (emoji: string) => {
+      const jitterX = Math.random() * 120 - 60
+      const jitterY = Math.random() * 80 - 40
+      const newSticker: StickerData = {
+        id: nextId(),
+        emoji,
+        x: Math.max(0, window.innerWidth / 2 - 24 + jitterX),
+        y: Math.max(0, window.innerHeight * 0.3 + jitterY),
+        size: 48,
+        zIndex: bumpZIndex(),
+      }
+      setStickers((prev) => [...prev, newSticker])
+    },
+    [bumpZIndex]
+  )
+
   return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button className="mt-2">Button</Button>
-        </div>
-        <div className="font-mono text-xs text-muted-foreground">
-          (Press <kbd>d</kbd> to toggle dark mode)
-        </div>
-      </div>
-    </div>
+    <ResizablePanelGroup orientation="vertical" className="h-full">
+      <ResizablePanel id="canvas" defaultSize="60%" minSize="30%">
+        <StickerCanvas
+          stickers={stickers}
+          onUpdateStickers={setStickers}
+          nextZIndex={zIndexRef.current}
+          onBumpZIndex={bumpZIndex}
+        />
+      </ResizablePanel>
+      <ResizableHandle withHandle />
+      <ResizablePanel id="tray" defaultSize="40%" minSize="10%" maxSize="60%">
+        <EmojiTray onSelectEmoji={addSticker} />
+      </ResizablePanel>
+    </ResizablePanelGroup>
   )
 }
