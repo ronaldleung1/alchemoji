@@ -6,14 +6,9 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable"
-import { StickerCanvas } from "@/components/sticker-canvas"
+import { StickerCanvas, CARD_W, CARD_H } from "@/components/sticker-canvas"
 import { EmojiTray } from "@/components/emoji-tray"
 import type { StickerData } from "@/components/sticker"
-
-let idCounter = 0
-function nextId() {
-  return `sticker-${++idCounter}`
-}
 
 export default function Page() {
   const [stickers, setStickers] = useState<StickerData[]>([])
@@ -26,13 +21,13 @@ export default function Page() {
 
   const addSticker = useCallback(
     (emoji: string) => {
-      const jitterX = Math.random() * 120 - 60
-      const jitterY = Math.random() * 80 - 40
+      const jitterX = Math.random() * 100 - 50
+      const jitterY = Math.random() * 60 - 30
       const newSticker: StickerData = {
-        id: nextId(),
+        id: crypto.randomUUID(),
         emoji,
-        x: Math.max(0, window.innerWidth / 2 - 24 + jitterX),
-        y: Math.max(0, window.innerHeight * 0.3 + jitterY),
+        x: CARD_W / 2 - 24 + jitterX,
+        y: CARD_H / 2 - 24 + jitterY,
         size: 48,
         zIndex: bumpZIndex(),
       }
