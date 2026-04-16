@@ -1,3 +1,3 @@
 # Alchemoji
 
-Emoji stickers playgorund
+Emoji stickers playground
