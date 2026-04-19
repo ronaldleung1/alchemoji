@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useCallback } from "react"
+import { useRef, useCallback, useState } from "react"
 import { AnimatePresence } from "motion/react"
 import { Sticker, type StickerData } from "./sticker"
 
@@ -10,20 +10,20 @@ export const CARD_H = 300
 interface StickerCanvasProps {
   stickers: StickerData[]
   onUpdateStickers: (stickers: StickerData[]) => void
-  nextZIndex: number
   onBumpZIndex: () => number
 }
 
 export function StickerCanvas({
   stickers,
   onUpdateStickers,
-  nextZIndex,
   onBumpZIndex,
-}: StickerCanvasProps) {
+}: Readonly<StickerCanvasProps>) {
   const cardRef = useRef<HTMLDivElement>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const bringToFront = useCallback(
+  const handleSelect = useCallback(
     (id: string) => {
+      setSelectedId(id)
       const z = onBumpZIndex()
       onUpdateStickers(
         stickers.map((s) => (s.id === id ? { ...s, zIndex: z } : s))
@@ -32,20 +32,31 @@ export function StickerCanvas({
     [stickers, onUpdateStickers, onBumpZIndex]
   )
 
-  const updateSize = useCallback(
-    (id: string, size: number) => {
+  const handleUpdate = useCallback(
+    (id: string, patch: Partial<StickerData>) => {
       onUpdateStickers(
-        stickers.map((s) => (s.id === id ? { ...s, size } : s))
+        stickers.map((s) => (s.id === id ? { ...s, ...patch } : s))
       )
     },
     [stickers, onUpdateStickers]
   )
 
-  const deleteSticker = useCallback(
+  const handleDelete = useCallback(
     (id: string) => {
+      if (selectedId === id) setSelectedId(null)
       onUpdateStickers(stickers.filter((s) => s.id !== id))
     },
-    [stickers, onUpdateStickers]
+    [stickers, onUpdateStickers, selectedId]
+  )
+
+  const handleCardClick = useCallback(
+    (e: React.MouseEvent) => {
+      // Only deselect if clicking the card background itself
+      if (e.target === e.currentTarget) {
+        setSelectedId(null)
+      }
+    },
+    []
   )
 
   return (
@@ -54,6 +65,7 @@ export function StickerCanvas({
         ref={cardRef}
         className="relative rounded-2xl border bg-card shadow-sm"
         style={{ width: CARD_W, height: CARD_H }}
+        onClick={handleCardClick}
       >
         {stickers.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -67,10 +79,11 @@ export function StickerCanvas({
             <Sticker
               key={sticker.id}
               sticker={sticker}
+              isSelected={selectedId === sticker.id}
               cardRef={cardRef}
-              onBringToFront={bringToFront}
-              onUpdateSize={updateSize}
-              onDelete={deleteSticker}
+              onSelect={handleSelect}
+              onUpdate={handleUpdate}
+              onDelete={handleDelete}
             />
           ))}
         </AnimatePresence>

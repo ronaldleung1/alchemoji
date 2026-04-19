@@ -26,9 +26,10 @@ export default function Page() {
       const newSticker: StickerData = {
         id: crypto.randomUUID(),
         emoji,
-        x: CARD_W / 2 - 24 + jitterX,
-        y: CARD_H / 2 - 24 + jitterY,
+        x: CARD_W / 2 + jitterX,
+        y: CARD_H / 2 + jitterY,
         size: 48,
+        rotation: 0,
         zIndex: bumpZIndex(),
       }
       setStickers((prev) => [...prev, newSticker])
@@ -42,7 +43,6 @@ export default function Page() {
         <StickerCanvas
           stickers={stickers}
           onUpdateStickers={setStickers}
-          nextZIndex={zIndexRef.current}
           onBumpZIndex={bumpZIndex}
         />
       </ResizablePanel>
