@@ -1,7 +1,7 @@
 "use client"
 
-import { motion } from "motion/react"
-import { useRef, useCallback } from "react"
+import { motion, useMotionValue, useTransform } from "motion/react"
+import { useRef, useCallback, useEffect } from "react"
 
 export interface StickerData {
   id: string
@@ -23,7 +23,7 @@ interface StickerProps {
 }
 
 const MIN_SIZE = 24
-const MAX_SIZE = 200
+const MAX_SIZE = 128
 
 function clamp(val: number, min: number, max: number) {
   return Math.min(max, Math.max(min, val))
@@ -37,8 +37,19 @@ export function Sticker({
   onUpdate,
   onDelete,
 }: Readonly<StickerProps>) {
-  const posRef = useRef<HTMLDivElement>(null)
+  const stickerRef = useRef<HTMLDivElement>(null)
   const transformRef = useRef<HTMLDivElement>(null)
+
+  const mvX = useMotionValue(sticker.x)
+  const mvY = useMotionValue(sticker.y)
+
+  // Derive CSS left/top so (0,0) = card center
+  const left = useTransform(mvX, (v) => `calc(50% + ${v}px)`)
+  const top = useTransform(mvY, (v) => `calc(50% + ${v}px)`)
+
+  // Sync motion values when props change
+  useEffect(() => { mvX.set(sticker.x) }, [sticker.x, mvX])
+  useEffect(() => { mvY.set(sticker.y) }, [sticker.y, mvY])
 
   // ── Drag (body) ──────────────────────────────────────────────────────
   const handleDragStart = useCallback(
@@ -55,15 +66,12 @@ export function Sticker({
       const startY = e.clientY
       const origX = sticker.x
       const origY = sticker.y
-      const el = posRef.current
 
       const onMove = (me: PointerEvent) => {
         const dx = me.clientX - startX
         const dy = me.clientY - startY
-        if (el) {
-          el.style.left = `${origX + dx}px`
-          el.style.top = `${origY + dy}px`
-        }
+        mvX.set(origX + dx)
+        mvY.set(origY + dy)
       }
 
       const onUp = (ue: PointerEvent) => {
@@ -76,6 +84,7 @@ export function Sticker({
         window.removeEventListener("pointerup", onUp)
 
         // Check if center is outside card → delete
+        const el = stickerRef.current
         if (cardRef.current && el) {
           const card = cardRef.current.getBoundingClientRect()
           const rect = el.getBoundingClientRect()
@@ -98,7 +107,7 @@ export function Sticker({
       window.addEventListener("pointermove", onMove)
       window.addEventListener("pointerup", onUp)
     },
-    [sticker.id, sticker.x, sticker.y, cardRef, onSelect, onUpdate, onDelete]
+    [sticker.id, sticker.x, sticker.y, cardRef, onSelect, onUpdate, onDelete, mvX, mvY]
   )
 
   // ── Scale + Rotate (handle) ──────────────────────────────────────────
@@ -171,60 +180,56 @@ export function Sticker({
 
   return (
     <motion.div
+      ref={stickerRef}
       data-sticker
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0, opacity: 0 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      className="absolute"
-      style={{ zIndex: sticker.zIndex }}
+      className="absolute cursor-move select-none"
+      style={{
+        left,
+        top,
+        x: "-50%",
+        y: "-50%",
+        zIndex: sticker.zIndex,
+        touchAction: "none",
+      }}
+      onPointerDown={handleDragStart}
     >
-      {/* Positioning layer */}
+      {/* Transform layer (rotate + size, centered origin) */}
       <div
-        ref={posRef}
-        className="absolute cursor-move select-none"
+        ref={transformRef}
         style={{
-          left: sticker.x,
-          top: sticker.y,
-          transform: "translate(-50%, -50%)",
-          touchAction: "none",
+          fontSize: sticker.size,
+          lineHeight: 1,
+          transform: `rotate(${sticker.rotation}deg)`,
+          transformOrigin: "center",
         }}
-        onPointerDown={handleDragStart}
       >
-        {/* Transform layer (rotate + size, centered origin) */}
+        {/* Dashed bounding box */}
         <div
-          ref={transformRef}
+          className="pointer-events-none absolute -inset-1 rounded-sm border border-dashed transition-opacity"
           style={{
-            fontSize: sticker.size,
-            lineHeight: 1,
-            transform: `rotate(${sticker.rotation}deg)`,
-            transformOrigin: "center",
+            borderColor: "var(--muted-foreground)",
+            opacity: isSelected ? 0.5 : 0,
           }}
-        >
-          {/* Dashed bounding box */}
-          <div
-            className="pointer-events-none absolute -inset-1 rounded-sm border border-dashed transition-opacity"
-            style={{
-              borderColor: "var(--muted-foreground)",
-              opacity: isSelected ? 0.5 : 0,
-            }}
-          />
+        />
 
-          {/* Emoji */}
-          <span className="pointer-events-none">{sticker.emoji}</span>
+        {/* Emoji */}
+        <span className="pointer-events-none">{sticker.emoji}</span>
 
-          {/* Scale + Rotate handle */}
-          <div
-            data-handle
-            onPointerDown={handleTransformStart}
-            className="absolute -right-2 -bottom-2 flex h-3 w-3 cursor-grab active:cursor-grabbing items-center justify-center rounded-full border border-border bg-foreground shadow-sm transition-opacity"
-            style={{
-              opacity: isSelected ? 1 : 0,
-              pointerEvents: isSelected ? "auto" : "none",
-              zIndex: 1,
-            }}
-          />
-        </div>
+        {/* Scale + Rotate handle */}
+        <div
+          data-handle
+          onPointerDown={handleTransformStart}
+          className="absolute -right-2 -bottom-2 flex h-3 w-3 cursor-grab active:cursor-grabbing items-center justify-center rounded-full border border-border bg-foreground shadow-sm transition-opacity"
+          style={{
+            opacity: isSelected ? 1 : 0,
+            pointerEvents: isSelected ? "auto" : "none",
+            zIndex: 1,
+          }}
+        />
       </div>
     </motion.div>
   )

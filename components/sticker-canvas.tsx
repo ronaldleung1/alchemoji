@@ -4,12 +4,12 @@ import { useRef, useCallback, useState } from "react"
 import { AnimatePresence } from "motion/react"
 import { Sticker, type StickerData } from "./sticker"
 
-export const CARD_W = 400
-export const CARD_H = 300
+export const CARD_W = 300
+export const CARD_H = 200
 
 interface StickerCanvasProps {
   stickers: StickerData[]
-  onUpdateStickers: (stickers: StickerData[]) => void
+  onUpdateStickers: React.Dispatch<React.SetStateAction<StickerData[]>>
   onBumpZIndex: () => number
 }
 
@@ -25,28 +25,28 @@ export function StickerCanvas({
     (id: string) => {
       setSelectedId(id)
       const z = onBumpZIndex()
-      onUpdateStickers(
-        stickers.map((s) => (s.id === id ? { ...s, zIndex: z } : s))
+      onUpdateStickers((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, zIndex: z } : s))
       )
     },
-    [stickers, onUpdateStickers, onBumpZIndex]
+    [onUpdateStickers, onBumpZIndex]
   )
 
   const handleUpdate = useCallback(
     (id: string, patch: Partial<StickerData>) => {
-      onUpdateStickers(
-        stickers.map((s) => (s.id === id ? { ...s, ...patch } : s))
+      onUpdateStickers((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, ...patch } : s))
       )
     },
-    [stickers, onUpdateStickers]
+    [onUpdateStickers]
   )
 
   const handleDelete = useCallback(
     (id: string) => {
-      if (selectedId === id) setSelectedId(null)
-      onUpdateStickers(stickers.filter((s) => s.id !== id))
+      setSelectedId((prev) => (prev === id ? null : prev))
+      onUpdateStickers((prev) => prev.filter((s) => s.id !== id))
     },
-    [stickers, onUpdateStickers, selectedId]
+    [onUpdateStickers]
   )
 
   const handleCardClick = useCallback(
