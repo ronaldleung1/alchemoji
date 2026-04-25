@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useCallback, useRef } from "react"
-import { useTheme } from "next-themes"
-import { Sun, Moon } from "lucide-react"
+import dynamic from "next/dynamic"
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -12,8 +11,9 @@ import { StickerCanvas } from "@/components/sticker-canvas"
 import { EmojiTray } from "@/components/emoji-tray"
 import type { StickerData } from "@/components/sticker"
 
+const ThemeToggle = dynamic(() => import("@/components/theme-toggle"), { ssr: false })
+
 export default function Page() {
-  const { resolvedTheme, setTheme } = useTheme()
   const [stickers, setStickers] = useState<StickerData[]>([])
   const zIndexRef = useRef(1)
 
@@ -42,13 +42,7 @@ export default function Page() {
 
   return (
     <div className="relative h-full">
-      <button
-        onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-        className="absolute right-3 top-3 z-50 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-        aria-label="Toggle theme"
-      >
-        {resolvedTheme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-      </button>
+      <ThemeToggle />
     <ResizablePanelGroup orientation="vertical" className="h-full">
       <ResizablePanel id="canvas" defaultSize="60%" minSize="30%">
         <StickerCanvas

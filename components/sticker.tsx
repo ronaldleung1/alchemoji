@@ -131,6 +131,11 @@ export function Sticker({
       const initialSize = sticker.size
       const initialRotation = sticker.rotation
 
+      const computeRotation = (rawRotation: number, shiftKey: boolean) => {
+        if (!shiftKey) return rawRotation
+        return Math.round(rawRotation / 45) * 45
+      }
+
       const onMove = (me: PointerEvent) => {
         const dx = me.clientX - centerX
         const dy = me.clientY - centerY
@@ -142,8 +147,9 @@ export function Sticker({
           MIN_SIZE,
           MAX_SIZE
         )
-        const newRotation =
+        const rawRotation =
           initialRotation + (angle - initialAngle) * (180 / Math.PI)
+        const newRotation = computeRotation(rawRotation, me.shiftKey)
 
         // Direct DOM for perf during drag
         if (el) {
@@ -166,8 +172,9 @@ export function Sticker({
           MIN_SIZE,
           MAX_SIZE
         )
-        const newRotation =
+        const rawRotation =
           initialRotation + (angle - initialAngle) * (180 / Math.PI)
+        const newRotation = computeRotation(rawRotation, ue.shiftKey)
 
         onUpdate(sticker.id, { size: newSize, rotation: newRotation })
       }
@@ -186,7 +193,7 @@ export function Sticker({
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0, opacity: 0 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      className="absolute cursor-move select-none"
+      className="group absolute cursor-move select-none"
       style={{
         left,
         top,
@@ -209,10 +216,10 @@ export function Sticker({
       >
         {/* Dashed bounding box */}
         <div
-          className="pointer-events-none absolute -inset-1 rounded-sm border border-dashed transition-opacity"
+          className="pointer-events-none absolute -inset-1 rounded-sm border border-dashed transition-opacity opacity-0 group-hover:opacity-25"
           style={{
             borderColor: "var(--muted-foreground)",
-            opacity: isSelected ? 0.5 : 0,
+            opacity: isSelected ? 0.5 : undefined,
           }}
         />
 
