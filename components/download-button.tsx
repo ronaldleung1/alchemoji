@@ -42,13 +42,14 @@ export default function DownloadButton({ stickers, onDelete }: Readonly<Download
 
     const bboxW = maxX - minX
     const bboxH = maxY - minY
-    const squareSize = Math.ceil(Math.max(bboxW, bboxH)) + padding * 2
-    const offsetX = (squareSize - bboxW) / 2 - minX
-    const offsetY = (squareSize - bboxH) / 2 - minY
+    const outW = Math.ceil(bboxW) + padding * 2
+    const outH = Math.ceil(bboxH) + padding * 2
+    const offsetX = padding - minX
+    const offsetY = padding - minY
 
     const canvas = document.createElement("canvas")
-    canvas.width = squareSize * scale
-    canvas.height = squareSize * scale
+    canvas.width = outW * scale
+    canvas.height = outH * scale
     const ctx = canvas.getContext("2d")
     if (!ctx) return null
     ctx.scale(scale, scale)

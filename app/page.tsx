@@ -8,7 +8,7 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable"
 import { StickerCanvas } from "@/components/sticker-canvas"
-import { GhostCanvas } from "@/components/ghost-canvas"
+import { AddCanvasButton } from "@/components/add-canvas-button"
 import { EmojiTray } from "@/components/emoji-tray"
 import type { StickerData } from "@/components/sticker"
 
@@ -31,8 +31,15 @@ function nextZIndex(stickers: StickerData[]) {
 
 export default function Page() {
   const [canvases, setCanvases] = useState<CanvasData[]>([])
+  const [activeCanvasId, setActiveCanvasId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
   const writeFailedRef = useRef(false)
+
+  const seed = useCallback((list: CanvasData[]) => {
+    const safe = list.length > 0 ? list : [newCanvas()]
+    setCanvases(safe)
+    setActiveCanvasId(safe[0].id)
+  }, [])
 
   useEffect(() => {
     let raw: string | null = null
@@ -40,18 +47,18 @@ export default function Page() {
       raw = localStorage.getItem(STORAGE_KEY)
     } catch (err) {
       console.warn("emoji-alchemy: localStorage unavailable, starting empty", err)
-      setCanvases([newCanvas()])
+      seed([])
       setHydrated(true)
       return
     }
 
     if (raw === null) {
-      setCanvases([newCanvas()])
+      seed([])
     } else {
       try {
         const parsed = JSON.parse(raw) as CanvasData[]
         if (!Array.isArray(parsed)) throw new Error("stored value is not an array")
-        setCanvases(parsed)
+        seed(parsed)
       } catch (err) {
         console.warn("emoji-alchemy: discarding corrupt saved canvases", err)
         try {
@@ -59,11 +66,11 @@ export default function Page() {
         } catch {
           // already logged above
         }
-        setCanvases([newCanvas()])
+        seed([])
       }
     }
     setHydrated(true)
-  }, [])
+  }, [seed])
 
   useEffect(() => {
     if (!hydrated) return
@@ -88,11 +95,19 @@ export default function Page() {
   )
 
   const addCanvas = useCallback(() => {
-    setCanvases((prev) => [...prev, newCanvas()])
+    const c = newCanvas()
+    setCanvases((prev) => [...prev, c])
+    setActiveCanvasId(c.id)
   }, [])
 
   const deleteCanvas = useCallback((canvasId: string) => {
-    setCanvases((prev) => prev.filter((c) => c.id !== canvasId))
+    setCanvases((prev) => {
+      const next = prev.filter((c) => c.id !== canvasId)
+      setActiveCanvasId((active) =>
+        active === canvasId ? next[0]?.id ?? null : active
+      )
+      return next
+    })
   }, [])
 
   const addSticker = useCallback(
@@ -101,16 +116,27 @@ export default function Page() {
         if (prev.length === 0) {
           const c = newCanvas()
           c.stickers.push(buildSticker(emoji, jitterX(), jitterY(), 1))
+          setActiveCanvasId(c.id)
           return [c]
         }
-        const last = prev[prev.length - 1]
-        const sticker = buildSticker(emoji, jitterX(), jitterY(), nextZIndex(last.stickers))
-        return prev.map((c, i) =>
-          i === prev.length - 1 ? { ...c, stickers: [...c.stickers, sticker] } : c
+        const targetId =
+          activeCanvasId && prev.some((c) => c.id === activeCanvasId)
+            ? activeCanvasId
+            : prev[0].id
+        return prev.map((c) =>
+          c.id === targetId
+            ? {
+                ...c,
+                stickers: [
+                  ...c.stickers,
+                  buildSticker(emoji, jitterX(), jitterY(), nextZIndex(c.stickers)),
+                ],
+              }
+            : c
         )
       })
     },
-    []
+    [activeCanvasId]
   )
 
   const dropStickerAt = useCallback(
@@ -143,6 +169,7 @@ export default function Page() {
               : c
           )
         )
+        setActiveCanvasId(canvasId)
         return true
       }
       return false
@@ -161,11 +188,13 @@ export default function Page() {
                 key={canvas.id}
                 canvasId={canvas.id}
                 stickers={canvas.stickers}
+                isActive={canvas.id === activeCanvasId}
+                onActivate={() => setActiveCanvasId(canvas.id)}
                 onUpdateStickers={(updater) => updateCanvasStickers(canvas.id, updater)}
                 onDelete={() => deleteCanvas(canvas.id)}
               />
             ))}
-            <GhostCanvas onAdd={addCanvas} />
+            <AddCanvasButton onAdd={addCanvas} />
           </div>
         </ResizablePanel>
         <ResizableHandle withHandle />

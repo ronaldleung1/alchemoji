@@ -11,6 +11,8 @@ export const CARD_H = 200
 interface StickerCanvasProps {
   canvasId: string
   stickers: StickerData[]
+  isActive: boolean
+  onActivate: () => void
   onUpdateStickers: (updater: (prev: StickerData[]) => StickerData[]) => void
   onDelete: () => void
 }
@@ -18,6 +20,8 @@ interface StickerCanvasProps {
 export function StickerCanvas({
   canvasId,
   stickers,
+  isActive,
+  onActivate,
   onUpdateStickers,
   onDelete,
 }: Readonly<StickerCanvasProps>) {
@@ -63,9 +67,12 @@ export function StickerCanvas({
       ref={cardRef}
       data-canvas-card
       data-canvas-id={canvasId}
-      className="group/card relative shrink-0 rounded-xl border bg-card shadow-card"
+      className={`group/card relative shrink-0 rounded-xl border bg-card shadow-card ring-offset-background transition-shadow ${
+        isActive ? "ring-2 ring-ring ring-offset-2" : ""
+      }`}
       style={{ width: CARD_W, height: CARD_H }}
       onClick={handleCardClick}
+      onPointerDownCapture={onActivate}
     >
       <DownloadButton stickers={stickers} onDelete={onDelete} />
       {stickers.length === 0 && (
