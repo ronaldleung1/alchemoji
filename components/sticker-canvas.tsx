@@ -63,7 +63,8 @@ export function StickerCanvas({
     <div className="flex h-full w-full items-center justify-center">
       <div
         ref={cardRef}
-        className="relative rounded-2xl border bg-card shadow-sm"
+        data-canvas-card
+        className="relative rounded-2xl border bg-card"
         style={{ width: CARD_W, height: CARD_H }}
         onClick={handleCardClick}
       >

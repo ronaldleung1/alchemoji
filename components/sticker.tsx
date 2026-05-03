@@ -227,15 +227,17 @@ export function Sticker({
         <span className="pointer-events-none">{sticker.emoji}</span>
 
         {/* Scale + Rotate handle */}
-        <div
+        <motion.div
           data-handle
           onPointerDown={handleTransformStart}
-          className="absolute -right-2 -bottom-2 flex h-3 w-3 cursor-grab active:cursor-grabbing items-center justify-center rounded-full border border-border bg-foreground shadow-sm transition-opacity"
+          className="absolute -right-2 -bottom-2 flex h-3 w-3 cursor-grab active:cursor-grabbing items-center justify-center rounded-full border border-border bg-foreground shadow-sm"
           style={{
             opacity: isSelected ? 1 : 0,
             pointerEvents: isSelected ? "auto" : "none",
             zIndex: 1,
           }}
+          whileHover={{ scale: 1.25 }}
+          transition={{ type: "spring", stiffness: 400, damping: 20 }}
         />
       </div>
     </motion.div>

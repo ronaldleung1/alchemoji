@@ -7,9 +7,28 @@ import {
   EmojiPicker as EmojiPickerPrimitive,
 } from "frimousse";
 import { LoaderIcon, SearchIcon } from "lucide-react";
-import type * as React from "react";
+import * as React from "react";
 
 import { cn } from "@/lib/utils";
+
+type EmojiPointerDownHandler = (emoji: string, e: React.PointerEvent) => void;
+
+const EmojiPickerDragContext =
+  React.createContext<EmojiPointerDownHandler | null>(null);
+
+function EmojiPickerDragProvider({
+  onDragStart,
+  children,
+}: {
+  onDragStart: EmojiPointerDownHandler;
+  children: React.ReactNode;
+}) {
+  return (
+    <EmojiPickerDragContext.Provider value={onDragStart}>
+      {children}
+    </EmojiPickerDragContext.Provider>
+  );
+}
 
 function EmojiPicker({
   className,
@@ -59,9 +78,13 @@ function EmojiPickerEmoji({
   className,
   ...props
 }: EmojiPickerListEmojiProps) {
+  const onDragStart = React.useContext(EmojiPickerDragContext);
   return (
     <button
       {...props}
+      onPointerDown={(e) => {
+        onDragStart?.(emoji.emoji, e);
+      }}
       className={cn(
         "data-[active]:bg-accent flex size-11 items-center justify-center rounded-lg text-[1.75rem] transition-colors hover:bg-muted",
         className
@@ -183,4 +206,5 @@ export {
   EmojiPickerContent,
   EmojiPickerFooter,
   EmojiPickerSkinTone,
+  EmojiPickerDragProvider,
 };
