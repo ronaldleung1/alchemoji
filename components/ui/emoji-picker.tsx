@@ -86,7 +86,7 @@ function EmojiPickerEmoji({
         onDragStart?.(emoji.emoji, e);
       }}
       className={cn(
-        "data-[active]:bg-accent flex size-11 items-center justify-center rounded-lg text-[1.75rem] transition-colors hover:bg-muted",
+        "data-[active]:bg-accent flex size-11 items-center justify-center rounded-lg text-[1.75rem] transition hover:bg-muted active:scale-[0.96]",
         className
       )}
       data-slot="emoji-picker-emoji"

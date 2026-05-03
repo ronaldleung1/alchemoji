@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import {
   ResizablePanelGroup,
@@ -8,88 +8,191 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable"
 import { StickerCanvas } from "@/components/sticker-canvas"
+import { GhostCanvas } from "@/components/ghost-canvas"
 import { EmojiTray } from "@/components/emoji-tray"
 import type { StickerData } from "@/components/sticker"
 
 const ThemeToggle = dynamic(() => import("@/components/theme-toggle"), { ssr: false })
-const DownloadButton = dynamic(() => import("@/components/download-button"), { ssr: false })
+
+const STORAGE_KEY = "emoji-alchemy:canvases"
+
+interface CanvasData {
+  id: string
+  stickers: StickerData[]
+}
+
+function newCanvas(): CanvasData {
+  return { id: crypto.randomUUID(), stickers: [] }
+}
+
+function nextZIndex(stickers: StickerData[]) {
+  return stickers.reduce((m, s) => Math.max(m, s.zIndex ?? 0), 0) + 1
+}
 
 export default function Page() {
-  const [stickers, setStickers] = useState<StickerData[]>([])
-  const zIndexRef = useRef(1)
+  const [canvases, setCanvases] = useState<CanvasData[]>([])
+  const [hydrated, setHydrated] = useState(false)
+  const writeFailedRef = useRef(false)
 
-  const bumpZIndex = useCallback(() => {
-    zIndexRef.current += 1
-    return zIndexRef.current
+  useEffect(() => {
+    let raw: string | null = null
+    try {
+      raw = localStorage.getItem(STORAGE_KEY)
+    } catch (err) {
+      console.warn("emoji-alchemy: localStorage unavailable, starting empty", err)
+      setCanvases([newCanvas()])
+      setHydrated(true)
+      return
+    }
+
+    if (raw === null) {
+      setCanvases([newCanvas()])
+    } else {
+      try {
+        const parsed = JSON.parse(raw) as CanvasData[]
+        if (!Array.isArray(parsed)) throw new Error("stored value is not an array")
+        setCanvases(parsed)
+      } catch (err) {
+        console.warn("emoji-alchemy: discarding corrupt saved canvases", err)
+        try {
+          localStorage.removeItem(STORAGE_KEY)
+        } catch {
+          // already logged above
+        }
+        setCanvases([newCanvas()])
+      }
+    }
+    setHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated) return
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(canvases))
+      writeFailedRef.current = false
+    } catch (err) {
+      if (!writeFailedRef.current) {
+        writeFailedRef.current = true
+        console.warn("emoji-alchemy: failed to persist canvases", err)
+      }
+    }
+  }, [canvases, hydrated])
+
+  const updateCanvasStickers = useCallback(
+    (canvasId: string, updater: (prev: StickerData[]) => StickerData[]) => {
+      setCanvases((prev) =>
+        prev.map((c) => (c.id === canvasId ? { ...c, stickers: updater(c.stickers) } : c))
+      )
+    },
+    []
+  )
+
+  const addCanvas = useCallback(() => {
+    setCanvases((prev) => [...prev, newCanvas()])
+  }, [])
+
+  const deleteCanvas = useCallback((canvasId: string) => {
+    setCanvases((prev) => prev.filter((c) => c.id !== canvasId))
   }, [])
 
   const addSticker = useCallback(
     (emoji: string) => {
-      const jitterX = Math.random() * 100 - 50
-      const jitterY = Math.random() * 60 - 30
-      const newSticker: StickerData = {
-        id: crypto.randomUUID(),
-        emoji,
-        x: jitterX,
-        y: jitterY,
-        size: 48,
-        rotation: 0,
-        zIndex: bumpZIndex(),
-      }
-      setStickers((prev) => [...prev, newSticker])
+      setCanvases((prev) => {
+        if (prev.length === 0) {
+          const c = newCanvas()
+          c.stickers.push(buildSticker(emoji, jitterX(), jitterY(), 1))
+          return [c]
+        }
+        const last = prev[prev.length - 1]
+        const sticker = buildSticker(emoji, jitterX(), jitterY(), nextZIndex(last.stickers))
+        return prev.map((c, i) =>
+          i === prev.length - 1 ? { ...c, stickers: [...c.stickers, sticker] } : c
+        )
+      })
     },
-    [bumpZIndex]
+    []
   )
 
   const dropStickerAt = useCallback(
     (emoji: string, clientX: number, clientY: number) => {
-      const card = document.querySelector(
-        "[data-canvas-card]"
-      ) as HTMLElement | null
-      if (!card) return false
-      const rect = card.getBoundingClientRect()
-      if (
-        clientX < rect.left ||
-        clientX > rect.right ||
-        clientY < rect.top ||
-        clientY > rect.bottom
-      ) {
-        return false
+      const cards = document.querySelectorAll<HTMLElement>("[data-canvas-card]")
+      for (const card of cards) {
+        const rect = card.getBoundingClientRect()
+        if (
+          clientX < rect.left ||
+          clientX > rect.right ||
+          clientY < rect.top ||
+          clientY > rect.bottom
+        ) {
+          continue
+        }
+        const canvasId = card.dataset.canvasId
+        if (!canvasId) continue
+        const x = clientX - (rect.left + rect.width / 2)
+        const y = clientY - (rect.top + rect.height / 2)
+        setCanvases((prev) =>
+          prev.map((c) =>
+            c.id === canvasId
+              ? {
+                  ...c,
+                  stickers: [
+                    ...c.stickers,
+                    buildSticker(emoji, x, y, nextZIndex(c.stickers)),
+                  ],
+                }
+              : c
+          )
+        )
+        return true
       }
-      const x = clientX - (rect.left + rect.width / 2)
-      const y = clientY - (rect.top + rect.height / 2)
-      const newSticker: StickerData = {
-        id: crypto.randomUUID(),
-        emoji,
-        x,
-        y,
-        size: 48,
-        rotation: 0,
-        zIndex: bumpZIndex(),
-      }
-      setStickers((prev) => [...prev, newSticker])
-      return true
+      return false
     },
-    [bumpZIndex]
+    []
   )
 
   return (
     <div className="relative h-full">
-      <DownloadButton stickers={stickers} />
       <ThemeToggle />
-    <ResizablePanelGroup orientation="vertical" className="h-full">
-      <ResizablePanel id="canvas" defaultSize="60%" minSize="30%">
-        <StickerCanvas
-          stickers={stickers}
-          onUpdateStickers={setStickers}
-          onBumpZIndex={bumpZIndex}
-        />
-      </ResizablePanel>
-      <ResizableHandle withHandle />
-      <ResizablePanel id="tray" defaultSize="40%" minSize="10%" maxSize="60%">
-        <EmojiTray onSelectEmoji={addSticker} onDropEmojiAt={dropStickerAt} />
-      </ResizablePanel>
-    </ResizablePanelGroup>
+      <ResizablePanelGroup orientation="vertical" className="h-full">
+        <ResizablePanel id="canvas" defaultSize="60%" minSize="30%">
+          <div className="flex h-full w-full items-center justify-center gap-6 overflow-auto bg-muted p-6 dark:bg-background">
+            {canvases.map((canvas) => (
+              <StickerCanvas
+                key={canvas.id}
+                canvasId={canvas.id}
+                stickers={canvas.stickers}
+                onUpdateStickers={(updater) => updateCanvasStickers(canvas.id, updater)}
+                onDelete={() => deleteCanvas(canvas.id)}
+              />
+            ))}
+            <GhostCanvas onAdd={addCanvas} />
+          </div>
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel id="tray" defaultSize="40%" minSize="10%" maxSize="60%">
+          <EmojiTray onSelectEmoji={addSticker} onDropEmojiAt={dropStickerAt} />
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   )
+}
+
+function jitterX() {
+  return Math.random() * 100 - 50
+}
+
+function jitterY() {
+  return Math.random() * 60 - 30
+}
+
+function buildSticker(emoji: string, x: number, y: number, zIndex: number): StickerData {
+  return {
+    id: crypto.randomUUID(),
+    emoji,
+    x,
+    y,
+    size: 48,
+    rotation: 0,
+    zIndex,
+  }
 }

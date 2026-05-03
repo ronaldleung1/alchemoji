@@ -111,7 +111,7 @@ export function EmojiTray({ onSelectEmoji, onDropEmojiAt }: EmojiTrayProps) {
         </EmojiPicker>
       </EmojiPickerDragProvider>
 
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {drag && (
           <motion.div
             key="emoji-drag-preview"

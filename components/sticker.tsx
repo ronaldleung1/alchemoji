@@ -190,9 +190,8 @@ export function Sticker({
       ref={stickerRef}
       data-sticker
       initial={{ scale: 0, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0, opacity: 0 }}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      animate={{ scale: 1, opacity: 1, transition: { type: "spring", stiffness: 400, damping: 25 } }}
+      exit={{ scale: 0.7, opacity: 0, filter: "blur(2px)", transition: { duration: 0.15, ease: "easeOut" } }}
       className="group absolute cursor-move select-none"
       style={{
         left,
@@ -226,19 +225,23 @@ export function Sticker({
         {/* Emoji */}
         <span className="pointer-events-none">{sticker.emoji}</span>
 
-        {/* Scale + Rotate handle */}
-        <motion.div
+        {/* Scale + Rotate handle — outer div for 40px hit area, inner for visual */}
+        <div
           data-handle
           onPointerDown={handleTransformStart}
-          className="absolute -right-2 -bottom-2 flex h-3 w-3 cursor-grab active:cursor-grabbing items-center justify-center rounded-full border border-border bg-foreground shadow-sm"
+          className="absolute -right-5.5 -bottom-5.5 flex h-10 w-10 cursor-grab active:cursor-grabbing items-center justify-center"
           style={{
             opacity: isSelected ? 1 : 0,
             pointerEvents: isSelected ? "auto" : "none",
             zIndex: 1,
           }}
-          whileHover={{ scale: 1.25 }}
-          transition={{ type: "spring", stiffness: 400, damping: 20 }}
-        />
+        >
+          <motion.div
+            className="h-3 w-3 rounded-full border border-border bg-foreground shadow-sm"
+            whileHover={{ scale: 1.25 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+          />
+        </div>
       </div>
     </motion.div>
   )
