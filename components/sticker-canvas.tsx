@@ -67,7 +67,7 @@ export function StickerCanvas({
       ref={cardRef}
       data-canvas-card
       data-canvas-id={canvasId}
-      className={`group/card relative shrink-0 rounded-xl border bg-card shadow-card ring-offset-background transition-shadow ${
+      className={`group/card relative shrink-0 rounded-xl border bg-card shadow-card-box ring-offset-background transition-shadow ${
         isActive ? "ring-2 ring-ring ring-offset-2" : ""
       }`}
       style={{ width: CARD_W, height: CARD_H }}

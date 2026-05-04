@@ -182,19 +182,23 @@ export default function Page() {
       <ThemeToggle />
       <ResizablePanelGroup orientation="vertical" className="h-full">
         <ResizablePanel id="canvas" defaultSize="60%" minSize="30%">
-          <div className="flex h-full w-full items-center justify-center gap-6 overflow-auto bg-muted p-6 dark:bg-background">
-            {canvases.map((canvas) => (
-              <StickerCanvas
-                key={canvas.id}
-                canvasId={canvas.id}
-                stickers={canvas.stickers}
-                isActive={canvas.id === activeCanvasId}
-                onActivate={() => setActiveCanvasId(canvas.id)}
-                onUpdateStickers={(updater) => updateCanvasStickers(canvas.id, updater)}
-                onDelete={() => deleteCanvas(canvas.id)}
-              />
-            ))}
-            <AddCanvasButton onAdd={addCanvas} />
+          <div className="h-full w-full overflow-y-scroll overflow-x-hidden bg-muted dark:bg-background [scrollbar-gutter:stable]">
+            <div className="flex min-h-full w-full items-center p-6">
+              <div className="grid w-full grid-cols-[repeat(auto-fit,300px)] justify-center gap-6">
+                {canvases.map((canvas) => (
+                  <StickerCanvas
+                    key={canvas.id}
+                    canvasId={canvas.id}
+                    stickers={canvas.stickers}
+                    isActive={canvas.id === activeCanvasId}
+                    onActivate={() => setActiveCanvasId(canvas.id)}
+                    onUpdateStickers={(updater) => updateCanvasStickers(canvas.id, updater)}
+                    onDelete={() => deleteCanvas(canvas.id)}
+                  />
+                ))}
+                <AddCanvasButton onAdd={addCanvas} />
+              </div>
+            </div>
           </div>
         </ResizablePanel>
         <ResizableHandle withHandle />

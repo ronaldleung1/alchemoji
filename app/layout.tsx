@@ -24,6 +24,9 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn("antialiased", fontMono.variable, "font-sans", publicSans.variable, dmSansHeading.variable)}
     >
+      <head>
+        <title>Alchemoji 🧪</title>
+      </head>
       <body>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
