@@ -57,7 +57,7 @@ function EmojiPickerSearch({
     >
       <SearchIcon className="size-4 shrink-0 opacity-50" />
       <EmojiPickerPrimitive.Search
-        className="outline-hidden placeholder:text-muted-foreground flex h-10 w-full bg-transparent py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+        className="outline-hidden placeholder:text-muted-foreground flex h-10 w-full bg-transparent py-3 text-base disabled:cursor-not-allowed disabled:opacity-50"
         data-slot="emoji-picker-search"
         {...props}
       />

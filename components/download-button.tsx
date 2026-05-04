@@ -15,9 +15,10 @@ import type { StickerData } from "@/components/sticker"
 interface DownloadButtonProps {
   stickers: StickerData[]
   onDelete?: () => void
+  isActive?: boolean
 }
 
-export default function DownloadButton({ stickers, onDelete }: Readonly<DownloadButtonProps>) {
+export default function DownloadButton({ stickers, onDelete, isActive }: Readonly<DownloadButtonProps>) {
   const [copied, setCopied] = useState(false)
 
   const buildCanvas = useCallback(() => {
@@ -83,22 +84,23 @@ export default function DownloadButton({ stickers, onDelete }: Readonly<Download
     }, "image/png")
   }, [buildCanvas])
 
-  const handleCopy = useCallback(() => {
+  const handleCopy = useCallback(async () => {
     const canvas = buildCanvas()
     if (!canvas) return
-    canvas.toBlob(async (blob) => {
-      if (!blob) return
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })])
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    }, "image/png")
+    const blobPromise = new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("toBlob failed"))), "image/png")
+    )
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": blobPromise })])
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
   }, [buildCanvas])
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="absolute top-2 right-2 z-50 rounded-xl p-2.5 text-muted-foreground opacity-0 transition group-hover/card:opacity-100 data-[state=open]:opacity-100 hover:bg-accent hover:text-accent-foreground active:scale-[0.96]"
+          className="absolute top-2 right-2 z-50 rounded-xl p-2.5 text-muted-foreground opacity-0 transition group-hover/card:opacity-100 data-[active=true]:opacity-100 data-[state=open]:opacity-100 hover:bg-accent hover:text-accent-foreground active:scale-[0.96]"
+          data-active={isActive}
           aria-label="Canvas actions"
         >
           <Ellipsis size={13} />

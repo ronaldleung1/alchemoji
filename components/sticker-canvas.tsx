@@ -74,7 +74,7 @@ export function StickerCanvas({
       onClick={handleCardClick}
       onPointerDownCapture={onActivate}
     >
-      <DownloadButton stickers={stickers} onDelete={onDelete} />
+      <DownloadButton stickers={stickers} onDelete={onDelete} isActive={isActive} />
       {stickers.length === 0 && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <p className="text-xs text-muted-foreground">
