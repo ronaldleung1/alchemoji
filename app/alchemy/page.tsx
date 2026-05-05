@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import Link from "next/link"
 import dynamic from "next/dynamic"
 
@@ -11,18 +11,36 @@ interface Emoji {
   name: string
 }
 
-const STARTERS: Emoji[] = [
-  { emoji: "🍕", name: "pizza" },
-  { emoji: "🐸", name: "frog" },
-  { emoji: "🎸", name: "guitar" },
-  { emoji: "🚀", name: "rocket" },
-  { emoji: "🍄", name: "mushroom" },
+const POOL: Emoji[] = [
+  { emoji: "🍕", name: "pizza" }, { emoji: "🐸", name: "frog" }, { emoji: "🎸", name: "guitar" },
+  { emoji: "🚀", name: "rocket" }, { emoji: "🍄", name: "mushroom" }, { emoji: "🦋", name: "butterfly" },
+  { emoji: "🌊", name: "wave" }, { emoji: "🎩", name: "top hat" }, { emoji: "🐙", name: "octopus" },
+  { emoji: "🍦", name: "ice cream" }, { emoji: "⚡", name: "lightning" }, { emoji: "🦊", name: "fox" },
+  { emoji: "🎪", name: "circus" }, { emoji: "🌈", name: "rainbow" }, { emoji: "🦴", name: "bone" },
+  { emoji: "🍋", name: "lemon" }, { emoji: "🎭", name: "theater" }, { emoji: "🐉", name: "dragon" },
+  { emoji: "🧲", name: "magnet" }, { emoji: "🪸", name: "coral" }, { emoji: "🫧", name: "bubbles" },
+  { emoji: "🌵", name: "cactus" }, { emoji: "🎺", name: "trumpet" }, { emoji: "🦑", name: "squid" },
+  { emoji: "🍩", name: "donut" }, { emoji: "🪄", name: "wand" }, { emoji: "🌙", name: "moon" },
+  { emoji: "🐚", name: "shell" }, { emoji: "🎲", name: "dice" }, { emoji: "🫀", name: "heart" },
+  { emoji: "🪨", name: "rock" }, { emoji: "🧸", name: "teddy" }, { emoji: "🦜", name: "parrot" },
+  { emoji: "🍰", name: "cake" }, { emoji: "🌋", name: "volcano" }, { emoji: "🐝", name: "bee" },
+  { emoji: "🎯", name: "target" }, { emoji: "🪻", name: "flower" }, { emoji: "🧊", name: "ice" },
+  { emoji: "🦈", name: "shark" },
 ]
+
+function pickRandom(pool: Emoji[], n: number): Emoji[] {
+  const shuffled = [...pool].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, n)
+}
 
 const SLOT_EMPTY = null
 
 export default function AlchemyPage() {
-  const [discovered, setDiscovered] = useState<Emoji[]>(STARTERS)
+  const [discovered, setDiscovered] = useState<Emoji[]>([])
+
+  useEffect(() => {
+    setDiscovered(pickRandom(POOL, 5))
+  }, [])
   const [slotA, setSlotA] = useState<Emoji | null>(SLOT_EMPTY)
   const [slotB, setSlotB] = useState<Emoji | null>(SLOT_EMPTY)
   const [result, setResult] = useState<Emoji | null>(null)

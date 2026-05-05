@@ -29,12 +29,6 @@ export default function Home() {
         >
           alchemy
         </Link>
-        <Link
-          href="/gallery"
-          className="rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-        >
-          gallery
-        </Link>
       </div>
     </div>
   )

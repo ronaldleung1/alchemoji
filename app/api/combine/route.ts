@@ -17,30 +17,40 @@ export async function POST(req: Request) {
 
   const message = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 64,
+    max_tokens: 128,
     messages: [
       {
         role: "user",
-        content: `You are an emoji alchemist. Combine these two emojis into a single new emoji that represents what you'd get by mixing them. Be creative and playful.
+        content: `You are a wildly creative emoji alchemist. When two emojis combine, the result should be surprising, poetic, or absurd — not the obvious answer. Think laterally: what unexpected concept, creature, feeling, or object emerges from this fusion?
+
+Rules:
+- Never return one of the input emojis as the result
+- Avoid boring/predictable combinations (🍕+🔥 should NOT be 🍕🔥 or just "hot pizza")
+- Favor weird, evocative, or funny outcomes
+- The name should be 2-4 words, lowercase, creative
 
 Emoji A: ${a}
 Emoji B: ${b}
 
-Respond with ONLY a JSON object in this exact format (no markdown, no explanation):
-{"emoji":"<single emoji>","name":"<2-3 word name>"}`,
+Respond with ONLY a JSON object, no markdown:
+{"emoji":"<single emoji>","name":"<creative name>"}`,
       },
     ],
   })
 
-  const text = message.content[0].type === "text" ? message.content[0].text.trim() : ""
+  const raw = message.content[0].type === "text" ? message.content[0].text.trim() : ""
+  // Strip markdown code fences if present
+  const text = raw.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/, "").trim()
 
   try {
     const result = JSON.parse(text)
     return NextResponse.json(result)
   } catch {
-    const match = text.match(/\p{Emoji}/u)
-    if (match) {
-      return NextResponse.json({ emoji: match[0], name: "mystery blend" })
+    // Try to extract from malformed JSON
+    const emojiMatch = text.match(/"emoji"\s*:\s*"([^"]+)"/)
+    const nameMatch = text.match(/"name"\s*:\s*"([^"]+)"/)
+    if (emojiMatch) {
+      return NextResponse.json({ emoji: emojiMatch[1], name: nameMatch?.[1] ?? "mystery blend" })
     }
     return NextResponse.json({ error: "unexpected response" }, { status: 500 })
   }

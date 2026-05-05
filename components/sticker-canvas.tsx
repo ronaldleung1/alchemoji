@@ -56,6 +56,15 @@ export function StickerCanvas({
     [onUpdateStickers]
   )
 
+  const handleFlip = useCallback(
+    (id: string) => {
+      onUpdateStickers((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, flipped: !s.flipped } : s))
+      )
+    },
+    [onUpdateStickers]
+  )
+
   const handleCardClick = useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       setSelectedId(null)
@@ -92,6 +101,7 @@ export function StickerCanvas({
             onSelect={handleSelect}
             onUpdate={handleUpdate}
             onDelete={handleDelete}
+            onFlip={handleFlip}
           />
         ))}
       </AnimatePresence>

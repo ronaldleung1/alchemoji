@@ -11,6 +11,7 @@ export interface StickerData {
   size: number
   rotation: number
   zIndex: number
+  flipped?: boolean
 }
 
 interface StickerProps {
@@ -20,6 +21,7 @@ interface StickerProps {
   onSelect: (id: string) => void
   onUpdate: (id: string, patch: Partial<StickerData>) => void
   onDelete: (id: string) => void
+  onFlip: (id: string) => void
 }
 
 const MIN_SIZE = 24
@@ -36,6 +38,7 @@ export function Sticker({
   onSelect,
   onUpdate,
   onDelete,
+  onFlip,
 }: Readonly<StickerProps>) {
   const stickerRef = useRef<HTMLDivElement>(null)
   const transformRef = useRef<HTMLDivElement>(null)
@@ -203,13 +206,13 @@ export function Sticker({
       }}
       onPointerDown={handleDragStart}
     >
-      {/* Transform layer (rotate + size, centered origin) */}
+      {/* Transform layer (rotate + size + flip, centered origin) */}
       <div
         ref={transformRef}
         style={{
           fontSize: sticker.size,
           lineHeight: 1,
-          transform: `rotate(${sticker.rotation}deg)`,
+          transform: `rotate(${sticker.rotation}deg) scaleX(${sticker.flipped ? -1 : 1})`,
           transformOrigin: "center",
         }}
       >
@@ -224,6 +227,26 @@ export function Sticker({
 
         {/* Emoji */}
         <span className="pointer-events-none">{sticker.emoji}</span>
+
+        {/* Flip button — top-left when selected */}
+        <div
+          data-handle
+          onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onFlip(sticker.id) }}
+          className="absolute -left-5.5 -top-5.5 flex h-10 w-10 items-center justify-center cursor-pointer"
+          style={{
+            opacity: isSelected ? 1 : 0,
+            pointerEvents: isSelected ? "auto" : "none",
+            zIndex: 1,
+          }}
+        >
+          <motion.div
+            className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background shadow-sm text-[10px]"
+            whileHover={{ scale: 1.25 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+          >
+            ↔
+          </motion.div>
+        </div>
 
         {/* Scale + Rotate handle — outer div for 40px hit area, inner for visual */}
         <div
