@@ -59,6 +59,7 @@ export default function DownloadButton({ stickers, onDelete }: Readonly<Download
       ctx.save()
       ctx.translate(CARD_W / 2 + s.x + offsetX, CARD_W / 2 + s.y + offsetY)
       ctx.rotate((s.rotation * Math.PI) / 180)
+      if (s.flipped) ctx.scale(-1, 1)
       ctx.font = `${s.size}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`
       ctx.textAlign = "center"
       ctx.textBaseline = "middle"

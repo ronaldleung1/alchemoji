@@ -66,6 +66,20 @@ export function StickerCanvas({
     [onUpdateStickers]
   )
 
+  const handleDuplicate = useCallback(
+    (id: string) => {
+      onUpdateStickers((prev) => {
+        const original = prev.find((s) => s.id === id)
+        if (!original) return prev
+        const maxZ = prev.reduce((m, s) => Math.max(m, s.zIndex ?? 0), 0)
+        const dupe = { ...original, id: crypto.randomUUID(), x: original.x + 20, y: original.y + 20, zIndex: maxZ + 1 }
+        setSelectedId(dupe.id)
+        return [...prev, dupe]
+      })
+    },
+    [onUpdateStickers]
+  )
+
   const handleCardClick = useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       setSelectedId(null)
@@ -75,16 +89,19 @@ export function StickerCanvas({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!selectedId) return
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === "INPUT" || tag === "TEXTAREA") return
       if (e.key === "Delete" || e.key === "Backspace") {
-        const tag = (e.target as HTMLElement).tagName
-        if (tag === "INPUT" || tag === "TEXTAREA") return
         e.preventDefault()
         handleDelete(selectedId)
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "d") {
+        e.preventDefault()
+        handleDuplicate(selectedId)
       }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [selectedId, handleDelete])
+  }, [selectedId, handleDelete, handleDuplicate])
 
   return (
     <div
@@ -124,6 +141,7 @@ export function StickerCanvas({
             onUpdate={handleUpdate}
             onDelete={handleDelete}
             onFlip={handleFlip}
+            onDuplicate={handleDuplicate}
           />
         ))}
       </AnimatePresence>
