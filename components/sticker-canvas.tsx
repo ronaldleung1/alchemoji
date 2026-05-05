@@ -1,7 +1,8 @@
 "use client"
 
-import { useRef, useCallback, useState } from "react"
+import { useRef, useCallback, useState, useEffect } from "react"
 import { AnimatePresence } from "motion/react"
+import { Trash2 } from "lucide-react"
 import { Sticker, type StickerData } from "./sticker"
 import DownloadButton from "./download-button"
 
@@ -71,6 +72,20 @@ export function StickerCanvas({
     }
   }, [])
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!selectedId) return
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const tag = (e.target as HTMLElement).tagName
+        if (tag === "INPUT" || tag === "TEXTAREA") return
+        e.preventDefault()
+        handleDelete(selectedId)
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [selectedId, handleDelete])
+
   return (
     <div
       ref={cardRef}
@@ -84,6 +99,13 @@ export function StickerCanvas({
       onPointerDownCapture={onActivate}
     >
       <DownloadButton stickers={stickers} onDelete={onDelete} />
+      <button
+        onClick={onDelete}
+        className="absolute bottom-2 right-2 z-50 rounded-xl p-2.5 text-muted-foreground opacity-0 transition group-hover/card:opacity-100 hover:bg-destructive/10 hover:text-destructive active:scale-[0.96]"
+        aria-label="Delete canvas"
+      >
+        <Trash2 size={13} />
+      </button>
       {stickers.length === 0 && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <p className="text-xs text-muted-foreground">

@@ -248,6 +248,26 @@ export function Sticker({
           </motion.div>
         </div>
 
+        {/* Delete button — top-right when selected */}
+        <div
+          data-handle
+          onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onDelete(sticker.id) }}
+          className="absolute -right-5.5 -top-5.5 flex h-10 w-10 items-center justify-center cursor-pointer"
+          style={{
+            opacity: isSelected ? 1 : 0,
+            pointerEvents: isSelected ? "auto" : "none",
+            zIndex: 1,
+          }}
+        >
+          <motion.div
+            className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background shadow-sm text-[10px] text-destructive"
+            whileHover={{ scale: 1.25 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+          >
+            ✕
+          </motion.div>
+        </div>
+
         {/* Scale + Rotate handle — outer div for 40px hit area, inner for visual */}
         <div
           data-handle
