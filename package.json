@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.93.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "frimousse": "^0.3.0",
