@@ -1,9 +1,10 @@
 "use client"
 
-import { useRef, useCallback, useState } from "react"
+import { useRef, useCallback, useState, useEffect } from "react"
 import { AnimatePresence } from "motion/react"
 import { Sticker, type StickerData } from "./sticker"
 import DownloadButton from "./download-button"
+import { haptic } from "@/lib/haptics"
 
 export const CARD_W = 300
 export const CARD_H = 200
@@ -30,6 +31,7 @@ export function StickerCanvas({
 
   const handleSelect = useCallback(
     (id: string) => {
+      haptic("selection")
       setSelectedId(id)
       onUpdateStickers((prev) => {
         const maxZ = prev.reduce((m, s) => Math.max(m, s.zIndex ?? 0), 0)
@@ -50,11 +52,23 @@ export function StickerCanvas({
 
   const handleDelete = useCallback(
     (id: string) => {
+      haptic("warning")
       setSelectedId((prev) => (prev === id ? null : prev))
       onUpdateStickers((prev) => prev.filter((s) => s.id !== id))
     },
     [onUpdateStickers]
   )
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
+        e.preventDefault()
+        handleDelete(selectedId)
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [selectedId, handleDelete])
 
   const handleCardClick = useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {

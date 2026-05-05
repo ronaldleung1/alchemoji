@@ -11,6 +11,7 @@ import { StickerCanvas } from "@/components/sticker-canvas"
 import { AddCanvasButton } from "@/components/add-canvas-button"
 import { EmojiTray } from "@/components/emoji-tray"
 import type { StickerData } from "@/components/sticker"
+import { haptic } from "@/lib/haptics"
 
 const ThemeToggle = dynamic(() => import("@/components/theme-toggle"), { ssr: false })
 
@@ -95,12 +96,14 @@ export default function Page() {
   )
 
   const addCanvas = useCallback(() => {
+    haptic("light")
     const c = newCanvas()
     setCanvases((prev) => [...prev, c])
     setActiveCanvasId(c.id)
   }, [])
 
   const deleteCanvas = useCallback((canvasId: string) => {
+    haptic("error")
     setCanvases((prev) => {
       const next = prev.filter((c) => c.id !== canvasId)
       setActiveCanvasId((active) =>
@@ -112,6 +115,7 @@ export default function Page() {
 
   const addSticker = useCallback(
     (emoji: string) => {
+      haptic("light")
       setCanvases((prev) => {
         if (prev.length === 0) {
           const c = newCanvas()
@@ -169,6 +173,7 @@ export default function Page() {
               : c
           )
         )
+        haptic("light")
         setActiveCanvasId(canvasId)
         return true
       }

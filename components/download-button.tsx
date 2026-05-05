@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { CARD_W } from "@/components/sticker-canvas"
 import type { StickerData } from "@/components/sticker"
+import { haptic } from "@/lib/haptics"
 
 interface DownloadButtonProps {
   stickers: StickerData[]
@@ -73,6 +74,7 @@ export default function DownloadButton({ stickers, onDelete, isActive }: Readonl
   const handleDownload = useCallback(() => {
     const canvas = buildCanvas()
     if (!canvas) return
+    haptic("success")
     canvas.toBlob((blob) => {
       if (!blob) return
       const url = URL.createObjectURL(blob)
@@ -91,6 +93,7 @@ export default function DownloadButton({ stickers, onDelete, isActive }: Readonl
       canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("toBlob failed"))), "image/png")
     )
     await navigator.clipboard.write([new ClipboardItem({ "image/png": blobPromise })])
+    haptic("success")
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }, [buildCanvas])
