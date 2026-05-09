@@ -22,6 +22,11 @@ interface CanvasData {
   stickers: StickerData[]
 }
 
+interface Selection {
+  canvasId: string
+  stickerId: string
+}
+
 function newCanvas(): CanvasData {
   return { id: crypto.randomUUID(), stickers: [] }
 }
@@ -33,6 +38,7 @@ function nextZIndex(stickers: StickerData[]) {
 export default function Page() {
   const [canvases, setCanvases] = useState<CanvasData[]>([])
   const [activeCanvasId, setActiveCanvasId] = useState<string | null>(null)
+  const [selection, setSelection] = useState<Selection | null>(null)
   const [hydrated, setHydrated] = useState(false)
   const writeFailedRef = useRef(false)
 
@@ -111,7 +117,56 @@ export default function Page() {
       )
       return next
     })
+    setSelection((prev) => (prev?.canvasId === canvasId ? null : prev))
   }, [])
+
+  const selectSticker = useCallback((canvasId: string, stickerId: string | null) => {
+    setSelection(stickerId == null ? null : { canvasId, stickerId })
+  }, [])
+
+  // Smooth-scroll the active canvas into view within its scroll container
+  // (the canvas panel above the emoji tray). `block: "nearest"` is a no-op
+  // when the canvas is already fully visible.
+  useEffect(() => {
+    if (!activeCanvasId) return
+    const el = document.querySelector<HTMLElement>(
+      `[data-canvas-id="${activeCanvasId}"]`
+    )
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+  }, [activeCanvasId])
+
+  // Global deselect: any pointerdown whose target isn't inside a sticker
+  // clears the current selection — including clicks on the search bar, tray,
+  // canvas background, or anywhere off-page. Target check (not stopPropagation
+  // reliance) so it's robust to React's event-delegation ordering.
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Element | null
+      if (target?.closest("[data-sticker]")) return
+      setSelection(null)
+    }
+    document.addEventListener("pointerdown", onPointerDown)
+    return () => document.removeEventListener("pointerdown", onPointerDown)
+  }, [])
+
+  // Backspace/Delete removes the selected sticker. Skip when typing in an
+  // input/textarea/contenteditable so the search bar still works normally.
+  useEffect(() => {
+    if (!selection) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Delete" && e.key !== "Backspace") return
+      const active = document.activeElement as HTMLElement | null
+      const tag = active?.tagName.toLowerCase()
+      if (tag === "input" || tag === "textarea" || active?.isContentEditable) return
+      e.preventDefault()
+      const { canvasId, stickerId } = selection
+      updateCanvasStickers(canvasId, (prev) => prev.filter((s) => s.id !== stickerId))
+      setSelection(null)
+      haptic("warning")
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [selection, updateCanvasStickers])
 
   const addSticker = useCallback(
     (emoji: string) => {
@@ -196,6 +251,10 @@ export default function Page() {
                     canvasId={canvas.id}
                     stickers={canvas.stickers}
                     isActive={canvas.id === activeCanvasId}
+                    selectedStickerId={
+                      selection?.canvasId === canvas.id ? selection.stickerId : null
+                    }
+                    onSelectSticker={(stickerId) => selectSticker(canvas.id, stickerId)}
                     onActivate={() => setActiveCanvasId(canvas.id)}
                     onUpdateStickers={(updater) => updateCanvasStickers(canvas.id, updater)}
                     onDelete={() => deleteCanvas(canvas.id)}
