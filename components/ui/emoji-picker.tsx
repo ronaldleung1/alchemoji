@@ -6,7 +6,7 @@ import {
   type EmojiPickerListRowProps,
   EmojiPicker as EmojiPickerPrimitive,
 } from "frimousse";
-import { LoaderIcon, SearchIcon } from "lucide-react";
+import { LoaderIcon, SearchIcon, XIcon } from "lucide-react";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
@@ -48,8 +48,19 @@ function EmojiPicker({
 
 function EmojiPickerSearch({
   className,
+  value: valueProp,
+  onChange: onChangeProp,
   ...props
 }: React.ComponentProps<typeof EmojiPickerPrimitive.Search>) {
+  const [value, setValue] = React.useState(
+    valueProp !== undefined ? String(valueProp) : ""
+  );
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setValue(e.target.value);
+    onChangeProp?.(e);
+  };
+
   return (
     <div
       className={cn("flex h-10 items-center gap-2 border-b px-3", className)}
@@ -57,10 +68,25 @@ function EmojiPickerSearch({
     >
       <SearchIcon className="size-4 shrink-0 opacity-50" />
       <EmojiPickerPrimitive.Search
-        className="outline-hidden placeholder:text-muted-foreground flex h-10 w-full bg-transparent py-3 text-base disabled:cursor-not-allowed disabled:opacity-50"
+        className="outline-hidden placeholder:text-muted-foreground flex h-10 w-full bg-transparent py-3 text-base disabled:cursor-not-allowed disabled:opacity-50 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
         data-slot="emoji-picker-search"
+        value={value}
+        onChange={handleChange}
         {...props}
       />
+      {value.length > 0 && (
+        <button
+          type="button"
+          aria-label="Clear search"
+          className="shrink-0 text-muted-foreground hover:text-foreground active:scale-90 transition-transform"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            setValue("");
+          }}
+        >
+          <XIcon className="size-4" />
+        </button>
+      )}
     </div>
   );
 }

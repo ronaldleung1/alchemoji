@@ -111,10 +111,13 @@ export default function Page() {
   const deleteCanvas = useCallback((canvasId: string) => {
     haptic("error")
     setCanvases((prev) => {
+      const idx = prev.findIndex((c) => c.id === canvasId)
       const next = prev.filter((c) => c.id !== canvasId)
-      setActiveCanvasId((active) =>
-        active === canvasId ? next[0]?.id ?? null : active
-      )
+      setActiveCanvasId((active) => {
+        if (active !== canvasId) return active
+        const predecessor = prev[idx - 1]
+        return (predecessor ?? next[0])?.id ?? null
+      })
       return next
     })
     setSelection((prev) => (prev?.canvasId === canvasId ? null : prev))

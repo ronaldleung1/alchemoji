@@ -9,10 +9,16 @@ import {
   EmojiPickerFooter,
   EmojiPickerDragProvider,
 } from "@/components/ui/emoji-picker"
+import { haptic } from "@/lib/haptics"
 
 const EMOJI_SIZE = 44
 const PADDING = 8
-const DRAG_THRESHOLD = 4
+// Hold-to-drag: a quick swipe past this distance is treated as a scroll and
+// cancels the pending drag. Only a stationary press lasting HOLD_MS activates
+// dragging — this is what differentiates scrolling the picker from picking up
+// an emoji.
+const HOLD_MS = 500
+const MOVE_TOLERANCE = 8
 
 interface EmojiTrayProps {
   onSelectEmoji: (emoji: string) => void
@@ -51,29 +57,50 @@ export function EmojiTray({ onSelectEmoji, onDropEmojiAt }: EmojiTrayProps) {
       const startX = ev.clientX
       const startY = ev.clientY
       let started = false
+      let cancelled = false
 
       previewX.set(startX)
       previewY.set(startY)
+
+      // Block native scrolling once drag activates so the picker doesn't slide
+      // out from under the user's finger mid-drag.
+      const blockTouch = (te: TouchEvent) => {
+        if (started) te.preventDefault()
+      }
+
+      const cleanup = () => {
+        window.clearTimeout(holdTimer)
+        window.removeEventListener("pointermove", onMove)
+        window.removeEventListener("pointerup", onUp)
+        window.removeEventListener("pointercancel", onCancel)
+        window.removeEventListener("touchmove", blockTouch)
+      }
+
+      const holdTimer = window.setTimeout(() => {
+        if (cancelled) return
+        started = true
+        haptic("light")
+        setDrag({ emoji, phase: "drag" })
+      }, HOLD_MS)
 
       const onMove = (me: PointerEvent) => {
         if (!started) {
           const dx = me.clientX - startX
           const dy = me.clientY - startY
-          if (Math.hypot(dx, dy) > DRAG_THRESHOLD) {
-            started = true
-            setDrag({ emoji, phase: "drag" })
+          // Movement before the hold timer fires means the user is scrolling —
+          // bail so the native scroll proceeds uninterrupted.
+          if (Math.hypot(dx, dy) > MOVE_TOLERANCE) {
+            cancelled = true
+            cleanup()
           }
+          return
         }
-        if (started) {
-          previewX.set(me.clientX)
-          previewY.set(me.clientY)
-        }
+        previewX.set(me.clientX)
+        previewY.set(me.clientY)
       }
 
       const onUp = (ue: PointerEvent) => {
-        window.removeEventListener("pointermove", onMove)
-        window.removeEventListener("pointerup", onUp)
-
+        cleanup()
         if (!started) return
 
         // Suppress the click that would otherwise fire onEmojiSelect
@@ -91,8 +118,15 @@ export function EmojiTray({ onSelectEmoji, onDropEmojiAt }: EmojiTrayProps) {
         setDrag({ emoji, phase: accepted ? "drop" : "cancel" })
       }
 
+      const onCancel = () => {
+        cleanup()
+        if (started) setDrag({ emoji, phase: "cancel" })
+      }
+
       window.addEventListener("pointermove", onMove)
       window.addEventListener("pointerup", onUp)
+      window.addEventListener("pointercancel", onCancel)
+      window.addEventListener("touchmove", blockTouch, { passive: false })
     },
     [onDropEmojiAt, previewX, previewY]
   )
