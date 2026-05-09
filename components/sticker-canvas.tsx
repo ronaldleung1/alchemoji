@@ -34,8 +34,10 @@ export function StickerCanvas({
       haptic("selection")
       setSelectedId(id)
       onUpdateStickers((prev) => {
-        const maxZ = prev.reduce((m, s) => Math.max(m, s.zIndex ?? 0), 0)
-        return prev.map((s) => (s.id === id ? { ...s, zIndex: maxZ + 1 } : s))
+        // Keep z-indices bounded to 1..n: move selected to top, renumber in order
+        const sorted = [...prev].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
+        const reordered = [...sorted.filter((s) => s.id !== id), sorted.find((s) => s.id === id)!]
+        return prev.map((s) => ({ ...s, zIndex: reordered.findIndex((r) => r.id === s.id) + 1 }))
       })
     },
     [onUpdateStickers]
