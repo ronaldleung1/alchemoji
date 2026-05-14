@@ -18,6 +18,10 @@ interface StickerCanvasProps {
   onActivate: () => void
   onUpdateStickers: (updater: (prev: StickerData[]) => StickerData[]) => void
   onDelete: () => void
+  onDuplicate: () => void
+  /** Snapshot for undo/redo before a user-driven mutation. Z-index restacking
+   *  on select intentionally skips this to avoid polluting the undo stack. */
+  onCommit: () => void
 }
 
 export function StickerCanvas({
@@ -29,6 +33,8 @@ export function StickerCanvas({
   onActivate,
   onUpdateStickers,
   onDelete,
+  onDuplicate,
+  onCommit,
 }: Readonly<StickerCanvasProps>) {
   const cardRef = useRef<HTMLDivElement>(null)
 
@@ -48,20 +54,22 @@ export function StickerCanvas({
 
   const handleUpdate = useCallback(
     (id: string, patch: Partial<StickerData>) => {
+      onCommit()
       onUpdateStickers((prev) =>
         prev.map((s) => (s.id === id ? { ...s, ...patch } : s))
       )
     },
-    [onUpdateStickers]
+    [onUpdateStickers, onCommit]
   )
 
   const handleDelete = useCallback(
     (id: string) => {
       haptic("warning")
+      onCommit()
       if (selectedStickerId === id) onSelectSticker(null)
       onUpdateStickers((prev) => prev.filter((s) => s.id !== id))
     },
-    [selectedStickerId, onSelectSticker, onUpdateStickers]
+    [selectedStickerId, onSelectSticker, onUpdateStickers, onCommit]
   )
 
   return (
@@ -75,7 +83,12 @@ export function StickerCanvas({
       style={{ width: CARD_W, height: CARD_H }}
       onPointerDownCapture={onActivate}
     >
-      <DownloadButton stickers={stickers} onDelete={onDelete} isActive={isActive} />
+      <DownloadButton
+        stickers={stickers}
+        onDelete={onDelete}
+        onDuplicate={onDuplicate}
+        isActive={isActive}
+      />
       {stickers.length === 0 && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <p className="text-xs text-muted-foreground">

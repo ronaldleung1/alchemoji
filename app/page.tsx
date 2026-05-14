@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useCallback, useEffect, useRef } from "react"
-import dynamic from "next/dynamic"
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -10,10 +9,10 @@ import {
 import { StickerCanvas } from "@/components/sticker-canvas"
 import { AddCanvasButton } from "@/components/add-canvas-button"
 import { EmojiTray } from "@/components/emoji-tray"
+import { TopBar } from "@/components/top-bar"
 import type { StickerData } from "@/components/sticker"
 import { haptic } from "@/lib/haptics"
-
-const ThemeToggle = dynamic(() => import("@/components/theme-toggle"), { ssr: false })
+import { useHistory, useUndoRedoShortcuts } from "@/lib/use-history"
 
 const STORAGE_KEY = "emoji-alchemy:canvases"
 
@@ -41,6 +40,38 @@ export default function Page() {
   const [selection, setSelection] = useState<Selection | null>(null)
   const [hydrated, setHydrated] = useState(false)
   const writeFailedRef = useRef(false)
+
+  // Mirror canvases into a ref so history callbacks stay stable without
+  // rebinding on every state change.
+  const canvasesRef = useRef<CanvasData[]>([])
+  useEffect(() => { canvasesRef.current = canvases }, [canvases])
+  const { commit, undo, redo, canUndo, canRedo } = useHistory<CanvasData[]>(
+    () => canvasesRef.current
+  )
+
+  const handleUndo = useCallback(() => {
+    const prev = undo()
+    if (prev === null) return
+    haptic("light")
+    setCanvases(prev)
+    setSelection(null)
+    setActiveCanvasId((active) =>
+      prev.some((c) => c.id === active) ? active : prev[0]?.id ?? null
+    )
+  }, [undo])
+
+  const handleRedo = useCallback(() => {
+    const next = redo()
+    if (next === null) return
+    haptic("light")
+    setCanvases(next)
+    setSelection(null)
+    setActiveCanvasId((active) =>
+      next.some((c) => c.id === active) ? active : next[0]?.id ?? null
+    )
+  }, [redo])
+
+  useUndoRedoShortcuts(handleUndo, handleRedo)
 
   const seed = useCallback((list: CanvasData[]) => {
     const safe = list.length > 0 ? list : [newCanvas()]
@@ -103,13 +134,36 @@ export default function Page() {
 
   const addCanvas = useCallback(() => {
     haptic("light")
+    commit()
     const c = newCanvas()
     setCanvases((prev) => [...prev, c])
     setActiveCanvasId(c.id)
-  }, [])
+  }, [commit])
+
+  const duplicateCanvas = useCallback(
+    (canvasId: string) => {
+      haptic("light")
+      commit()
+      let dupId: string | null = null
+      setCanvases((prev) => {
+        const idx = prev.findIndex((c) => c.id === canvasId)
+        if (idx === -1) return prev
+        const src = prev[idx]
+        const copy: CanvasData = {
+          id: crypto.randomUUID(),
+          stickers: src.stickers.map((s) => ({ ...s, id: crypto.randomUUID() })),
+        }
+        dupId = copy.id
+        return [...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)]
+      })
+      if (dupId) setActiveCanvasId(dupId)
+    },
+    [commit]
+  )
 
   const deleteCanvas = useCallback((canvasId: string) => {
     haptic("error")
+    commit()
     setCanvases((prev) => {
       const idx = prev.findIndex((c) => c.id === canvasId)
       const next = prev.filter((c) => c.id !== canvasId)
@@ -121,7 +175,7 @@ export default function Page() {
       return next
     })
     setSelection((prev) => (prev?.canvasId === canvasId ? null : prev))
-  }, [])
+  }, [commit])
 
   const selectSticker = useCallback((canvasId: string, stickerId: string | null) => {
     setSelection(stickerId == null ? null : { canvasId, stickerId })
@@ -152,28 +206,63 @@ export default function Page() {
     return () => document.removeEventListener("pointerdown", onPointerDown)
   }, [])
 
-  // Backspace/Delete removes the selected sticker. Skip when typing in an
-  // input/textarea/contenteditable so the search bar still works normally.
+  // Backspace/Delete removes the selected sticker.
+  // Arrow keys nudge it by 1px (Shift = 10px).
+  // Both skip when focus is in a text input.
+  // Arrow-key bursts within NUDGE_COALESCE_MS share one history entry so
+  // holding a key down doesn't flood the undo stack.
   useEffect(() => {
     if (!selection) return
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Delete" && e.key !== "Backspace") return
-      const active = document.activeElement as HTMLElement | null
-      const tag = active?.tagName.toLowerCase()
-      if (tag === "input" || tag === "textarea" || active?.isContentEditable) return
-      e.preventDefault()
-      const { canvasId, stickerId } = selection
-      updateCanvasStickers(canvasId, (prev) => prev.filter((s) => s.id !== stickerId))
-      setSelection(null)
-      haptic("warning")
+    const NUDGE_COALESCE_MS = 500
+    let lastNudgeAt = 0
+
+    const isTyping = (el: HTMLElement | null) => {
+      const tag = el?.tagName.toLowerCase()
+      return tag === "input" || tag === "textarea" || !!el?.isContentEditable
     }
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isTyping(document.activeElement as HTMLElement | null)) return
+
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault()
+        commit()
+        const { canvasId, stickerId } = selection
+        updateCanvasStickers(canvasId, (prev) => prev.filter((s) => s.id !== stickerId))
+        setSelection(null)
+        haptic("warning")
+        return
+      }
+
+      const arrowDelta: Record<string, [number, number]> = {
+        ArrowLeft: [-1, 0], ArrowRight: [1, 0],
+        ArrowUp: [0, -1], ArrowDown: [0, 1],
+      }
+      const delta = arrowDelta[e.key]
+      if (!delta) return
+      e.preventDefault()
+
+      const step = e.shiftKey ? 10 : 1
+      const [dx, dy] = [delta[0] * step, delta[1] * step]
+
+      const now = performance.now()
+      if (now - lastNudgeAt > NUDGE_COALESCE_MS) commit()
+      lastNudgeAt = now
+
+      const { canvasId, stickerId } = selection
+      updateCanvasStickers(canvasId, (prev) =>
+        prev.map((s) => s.id === stickerId ? { ...s, x: s.x + dx, y: s.y + dy } : s)
+      )
+    }
+
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [selection, updateCanvasStickers])
+  }, [selection, updateCanvasStickers, commit])
 
   const addSticker = useCallback(
     (emoji: string) => {
       haptic("light")
+      commit()
       let scrollTargetId: string | null = null
       setCanvases((prev) => {
         if (prev.length === 0) {
@@ -208,7 +297,7 @@ export default function Page() {
         el?.scrollIntoView({ behavior: "smooth", block: "nearest" })
       })
     },
-    [activeCanvasId]
+    [activeCanvasId, commit]
   )
 
   const dropStickerAt = useCallback(
@@ -228,6 +317,7 @@ export default function Page() {
         if (!canvasId) continue
         const x = clientX - (rect.left + rect.width / 2)
         const y = clientY - (rect.top + rect.height / 2)
+        commit()
         setCanvases((prev) =>
           prev.map((c) =>
             c.id === canvasId
@@ -247,12 +337,17 @@ export default function Page() {
       }
       return false
     },
-    []
+    [commit]
   )
 
   return (
     <div className="relative h-full">
-      <ThemeToggle />
+      <TopBar
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+      />
       <ResizablePanelGroup orientation="vertical" className="h-full">
         <ResizablePanel id="canvas" defaultSize="60%" minSize="30%">
           <div className="h-full w-full overflow-y-auto overflow-x-hidden bg-muted dark:bg-background">
@@ -271,6 +366,8 @@ export default function Page() {
                     onActivate={() => setActiveCanvasId(canvas.id)}
                     onUpdateStickers={(updater) => updateCanvasStickers(canvas.id, updater)}
                     onDelete={() => deleteCanvas(canvas.id)}
+                    onDuplicate={() => duplicateCanvas(canvas.id)}
+                    onCommit={commit}
                   />
                 ))}
                 <AddCanvasButton onAdd={addCanvas} />

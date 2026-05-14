@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useState, useSyncExternalStore } from "react"
-import { Download, Copy, Check, Ellipsis, Trash2, Share } from "lucide-react"
+import { Download, Copy, Check, Ellipsis, Trash2, Share, CopyPlus } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,10 +28,11 @@ const getCanShareSnapshot = () => {
 interface DownloadButtonProps {
   stickers: StickerData[]
   onDelete?: () => void
+  onDuplicate?: () => void
   isActive?: boolean
 }
 
-export default function DownloadButton({ stickers, onDelete, isActive }: Readonly<DownloadButtonProps>) {
+export default function DownloadButton({ stickers, onDelete, onDuplicate, isActive }: Readonly<DownloadButtonProps>) {
   const [copied, setCopied] = useState(false)
   const canShare = useSyncExternalStore(subscribeNoop, getCanShareSnapshot, getServerCanShareSnapshot)
 
@@ -248,6 +249,15 @@ export default function DownloadButton({ stickers, onDelete, isActive }: Readonl
           <Download size={13} />
           Download
         </DropdownMenuItem>
+        {onDuplicate && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onDuplicate}>
+              <CopyPlus size={13} />
+              Duplicate
+            </DropdownMenuItem>
+          </>
+        )}
         {onDelete && (
           <>
             <DropdownMenuSeparator />

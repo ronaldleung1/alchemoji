@@ -19,7 +19,7 @@ export function AddCanvasButton({ onAdd }: Readonly<AddCanvasButtonProps>) {
       <Plus
         size={48}
         strokeWidth={1.5}
-        className="transition group-hover/ghost:scale-110"
+        className="transition-transform group-hover/add:scale-110"
       />
     </button>
   )

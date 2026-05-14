@@ -11,8 +11,9 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="absolute right-3 top-3 z-50 rounded-md p-2.5 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground active:scale-[0.96]"
-      aria-label="Toggle theme"
+      className="rounded-md p-2.5 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground active:scale-[0.96]"
+      aria-label="Toggle theme (D)"
+      title="Toggle theme (D)"
     >
       <AnimatePresence mode="wait" initial={false}>
         <motion.span

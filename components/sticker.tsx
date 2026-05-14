@@ -101,6 +101,9 @@ export function Sticker({
           }
         }
 
+        // Tap without drag: skip redundant write (no history entry needed).
+        if (dx === 0 && dy === 0) return
+
         onUpdate(sticker.id, { x: finalX, y: finalY })
       }
 
@@ -175,6 +178,9 @@ export function Sticker({
         const rawRotation =
           initialRotation + (angle - initialAngle) * (180 / Math.PI)
         const newRotation = computeRotation(rawRotation, ue.shiftKey)
+
+        // Skip noop on click-without-gesture.
+        if (newSize === initialSize && newRotation === initialRotation) return
 
         onUpdate(sticker.id, { size: newSize, rotation: newRotation })
       }
