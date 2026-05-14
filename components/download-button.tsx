@@ -1,7 +1,7 @@
 "use client"
 
-import { useCallback, useState } from "react"
-import { Download, Copy, Check, Ellipsis, Trash2 } from "lucide-react"
+import { useCallback, useState, useSyncExternalStore } from "react"
+import { Download, Copy, Check, Ellipsis, Trash2, Share } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +13,18 @@ import { CARD_W, CARD_H } from "@/components/sticker-canvas"
 import type { StickerData } from "@/components/sticker"
 import { haptic } from "@/lib/haptics"
 
+const subscribeNoop = () => () => {}
+const getServerCanShareSnapshot = () => false
+const getCanShareSnapshot = () => {
+  if (typeof navigator === "undefined" || !navigator.canShare) return false
+  try {
+    const probe = new File([new Blob([""], { type: "image/png" })], "probe.png", { type: "image/png" })
+    return navigator.canShare({ files: [probe] })
+  } catch {
+    return false
+  }
+}
+
 interface DownloadButtonProps {
   stickers: StickerData[]
   onDelete?: () => void
@@ -21,6 +33,7 @@ interface DownloadButtonProps {
 
 export default function DownloadButton({ stickers, onDelete, isActive }: Readonly<DownloadButtonProps>) {
   const [copied, setCopied] = useState(false)
+  const canShare = useSyncExternalStore(subscribeNoop, getCanShareSnapshot, getServerCanShareSnapshot)
 
   const buildCanvas = useCallback(() => {
     if (stickers.length === 0) return null
@@ -167,10 +180,34 @@ export default function DownloadButton({ stickers, onDelete, isActive }: Readonl
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = "emoji-canvas.png"
+      a.download = "alchemoji.png"
       a.click()
       URL.revokeObjectURL(url)
     }, "image/png")
+  }, [buildCanvas])
+
+  const handleShare = useCallback(async () => {
+    const canvas = buildCanvas()
+    if (!canvas) return
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/png")
+    )
+    if (!blob) return
+    const file = new File([blob], "alchemoji.png", { type: "image/png" })
+    try {
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          text: "made with alchemoji.fun",
+          url: "https://alchemoji.fun",
+        })
+        haptic("success")
+      }
+    } catch (err) {
+      if ((err as Error)?.name !== "AbortError") {
+        console.error("Share failed", err)
+      }
+    }
   }, [buildCanvas])
 
   const handleCopy = useCallback(async () => {
@@ -197,6 +234,12 @@ export default function DownloadButton({ stickers, onDelete, isActive }: Readonl
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side="bottom">
+        {canShare && (
+          <DropdownMenuItem onClick={handleShare}>
+            <Share size={13} />
+            Share
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={handleCopy}>
           {copied ? <Check size={13} /> : <Copy size={13} />}
           {copied ? "Copied!" : "Copy image"}

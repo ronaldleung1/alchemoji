@@ -174,17 +174,20 @@ export default function Page() {
   const addSticker = useCallback(
     (emoji: string) => {
       haptic("light")
+      let scrollTargetId: string | null = null
       setCanvases((prev) => {
         if (prev.length === 0) {
           const c = newCanvas()
           c.stickers.push(buildSticker(emoji, jitterX(), jitterY(), 1))
           setActiveCanvasId(c.id)
+          scrollTargetId = c.id
           return [c]
         }
         const targetId =
           activeCanvasId && prev.some((c) => c.id === activeCanvasId)
             ? activeCanvasId
             : prev[0].id
+        scrollTargetId = targetId
         return prev.map((c) =>
           c.id === targetId
             ? {
@@ -196,6 +199,13 @@ export default function Page() {
               }
             : c
         )
+      })
+      requestAnimationFrame(() => {
+        if (!scrollTargetId) return
+        const el = document.querySelector<HTMLElement>(
+          `[data-canvas-id="${scrollTargetId}"]`
+        )
+        el?.scrollIntoView({ behavior: "smooth", block: "nearest" })
       })
     },
     [activeCanvasId]
