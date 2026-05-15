@@ -17,6 +17,7 @@ interface StickerProps {
   sticker: StickerData
   isSelected: boolean
   cardRef: React.RefObject<HTMLDivElement | null>
+  zoom?: number
   onSelect: (id: string) => void
   onUpdate: (id: string, patch: Partial<StickerData>) => void
   onDelete: (id: string) => void
@@ -33,6 +34,7 @@ export function Sticker({
   sticker,
   isSelected,
   cardRef,
+  zoom = 1,
   onSelect,
   onUpdate,
   onDelete,
@@ -43,13 +45,16 @@ export function Sticker({
   const mvX = useMotionValue(sticker.x)
   const mvY = useMotionValue(sticker.y)
 
-  // Derive CSS left/top so (0,0) = card center
-  const left = useTransform(mvX, (v) => `calc(50% + ${v}px)`)
-  const top = useTransform(mvY, (v) => `calc(50% + ${v}px)`)
+  // Derive CSS left/top so (0,0) = card center. Multiply by zoom so logical
+  // coords stay in unzoomed units while the rendered position scales with
+  // the card.
+  const left = useTransform(mvX, (v) => `calc(50% + ${v * zoom}px)`)
+  const top = useTransform(mvY, (v) => `calc(50% + ${v * zoom}px)`)
 
-  // Sync motion values when props change
-  useEffect(() => { mvX.set(sticker.x) }, [sticker.x, mvX])
-  useEffect(() => { mvY.set(sticker.y) }, [sticker.y, mvY])
+  // Sync motion values when props change. Re-pushing the same value on zoom
+  // change forces useTransform to re-render with the latest zoom multiplier.
+  useEffect(() => { mvX.set(sticker.x) }, [sticker.x, zoom, mvX])
+  useEffect(() => { mvY.set(sticker.y) }, [sticker.y, zoom, mvY])
 
   // ── Drag (body) ──────────────────────────────────────────────────────
   const handleDragStart = useCallback(
@@ -66,17 +71,22 @@ export function Sticker({
       const startY = e.clientY
       const origX = sticker.x
       const origY = sticker.y
+      // CSS `zoom` on an ancestor inflates viewport-px deltas relative to the
+      // logical coords we store. Recover the factor from the card's rendered
+      // width vs its declared 300px logical width.
+      const cardWidth = cardRef.current?.getBoundingClientRect().width ?? 300
+      const scale = cardWidth / 300 || 1
 
       const onMove = (me: PointerEvent) => {
-        const dx = me.clientX - startX
-        const dy = me.clientY - startY
+        const dx = (me.clientX - startX) / scale
+        const dy = (me.clientY - startY) / scale
         mvX.set(origX + dx)
         mvY.set(origY + dy)
       }
 
       const onUp = (ue: PointerEvent) => {
-        const dx = ue.clientX - startX
-        const dy = ue.clientY - startY
+        const dx = (ue.clientX - startX) / scale
+        const dy = (ue.clientY - startY) / scale
         const finalX = origX + dx
         const finalY = origY + dy
 
@@ -154,9 +164,10 @@ export function Sticker({
           initialRotation + (angle - initialAngle) * (180 / Math.PI)
         const newRotation = computeRotation(rawRotation, me.shiftKey)
 
-        // Direct DOM for perf during drag
+        // Direct DOM for perf during drag. Scale by zoom so the visual size
+        // matches the committed render (which also multiplies by zoom).
         if (el) {
-          el.style.fontSize = `${newSize}px`
+          el.style.fontSize = `${newSize * zoom}px`
           el.style.transform = `rotate(${newRotation}deg)`
         }
       }
@@ -188,7 +199,7 @@ export function Sticker({
       window.addEventListener("pointermove", onMove)
       window.addEventListener("pointerup", onUp)
     },
-    [sticker.id, sticker.size, sticker.rotation, onUpdate]
+    [sticker.id, sticker.size, sticker.rotation, zoom, onUpdate]
   )
 
   return (
@@ -213,7 +224,7 @@ export function Sticker({
       <div
         ref={transformRef}
         style={{
-          fontSize: sticker.size,
+          fontSize: sticker.size * zoom,
           lineHeight: 1,
           transform: `rotate(${sticker.rotation}deg)`,
           transformOrigin: "center",

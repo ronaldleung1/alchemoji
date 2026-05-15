@@ -13,6 +13,7 @@ interface StickerCanvasProps {
   canvasId: string
   stickers: StickerData[]
   isActive: boolean
+  zoom?: number
   selectedStickerId: string | null
   onSelectSticker: (stickerId: string | null) => void
   onActivate: () => void
@@ -28,6 +29,7 @@ export function StickerCanvas({
   canvasId,
   stickers,
   isActive,
+  zoom = 1,
   selectedStickerId,
   onSelectSticker,
   onActivate,
@@ -80,7 +82,7 @@ export function StickerCanvas({
       className={`group/card relative shrink-0 scroll-my-6 rounded-xl border bg-card shadow-card-box ring-offset-background transition-shadow ${
         isActive ? "ring-2 ring-ring ring-offset-2" : ""
       }`}
-      style={{ width: CARD_W, height: CARD_H }}
+      style={{ width: CARD_W * zoom, height: CARD_H * zoom }}
       onPointerDownCapture={onActivate}
     >
       <DownloadButton
@@ -91,7 +93,10 @@ export function StickerCanvas({
       />
       {stickers.length === 0 && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <p className="text-xs text-muted-foreground">
+          <p
+            className="text-muted-foreground"
+            style={{ fontSize: 12 * zoom }}
+          >
             Tap an emoji below to add a sticker
           </p>
         </div>
@@ -103,6 +108,7 @@ export function StickerCanvas({
             sticker={sticker}
             isSelected={selectedStickerId === sticker.id}
             cardRef={cardRef}
+            zoom={zoom}
             onSelect={handleSelect}
             onUpdate={handleUpdate}
             onDelete={handleDelete}

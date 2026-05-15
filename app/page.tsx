@@ -10,6 +10,7 @@ import { StickerCanvas } from "@/components/sticker-canvas"
 import { AddCanvasButton } from "@/components/add-canvas-button"
 import { EmojiTray } from "@/components/emoji-tray"
 import { TopBar } from "@/components/top-bar"
+import { ZoomControls, ZOOM_DEFAULT, nextZoom, prevZoom } from "@/components/zoom-controls"
 import type { StickerData } from "@/components/sticker"
 import { haptic } from "@/lib/haptics"
 import { useHistory, useUndoRedoShortcuts } from "@/lib/use-history"
@@ -39,6 +40,7 @@ export default function Page() {
   const [activeCanvasId, setActiveCanvasId] = useState<string | null>(null)
   const [selection, setSelection] = useState<Selection | null>(null)
   const [hydrated, setHydrated] = useState(false)
+  const [zoom, setZoom] = useState(ZOOM_DEFAULT)
   const writeFailedRef = useRef(false)
 
   // Mirror canvases into a ref so history callbacks stay stable without
@@ -263,39 +265,40 @@ export default function Page() {
     (emoji: string) => {
       haptic("light")
       commit()
-      let scrollTargetId: string | null = null
-      setCanvases((prev) => {
-        if (prev.length === 0) {
-          const c = newCanvas()
-          c.stickers.push(buildSticker(emoji, jitterX(), jitterY(), 1))
-          setActiveCanvasId(c.id)
-          scrollTargetId = c.id
-          return [c]
-        }
-        const targetId =
-          activeCanvasId && prev.some((c) => c.id === activeCanvasId)
+      // Pre-generate the sticker ID so we can select it in the same React
+      // batch as the state update — no extra render needed.
+      const stickerId = crypto.randomUUID()
+      const x = jitterX()
+      const y = jitterY()
+
+      const current = canvasesRef.current
+      if (current.length === 0) {
+        const c = newCanvas()
+        setCanvases([{ ...c, stickers: [buildSticker(stickerId, emoji, x, y, 1)] }])
+        setActiveCanvasId(c.id)
+        setSelection({ canvasId: c.id, stickerId })
+        requestAnimationFrame(() => {
+          document.querySelector<HTMLElement>(`[data-canvas-id="${c.id}"]`)
+            ?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+        })
+      } else {
+        const canvasId =
+          activeCanvasId && current.some((c) => c.id === activeCanvasId)
             ? activeCanvasId
-            : prev[0].id
-        scrollTargetId = targetId
-        return prev.map((c) =>
-          c.id === targetId
-            ? {
-                ...c,
-                stickers: [
-                  ...c.stickers,
-                  buildSticker(emoji, jitterX(), jitterY(), nextZIndex(c.stickers)),
-                ],
-              }
-            : c
+            : current[0].id
+        setCanvases((prev) =>
+          prev.map((c) =>
+            c.id === canvasId
+              ? { ...c, stickers: [...c.stickers, buildSticker(stickerId, emoji, x, y, nextZIndex(c.stickers))] }
+              : c
+          )
         )
-      })
-      requestAnimationFrame(() => {
-        if (!scrollTargetId) return
-        const el = document.querySelector<HTMLElement>(
-          `[data-canvas-id="${scrollTargetId}"]`
-        )
-        el?.scrollIntoView({ behavior: "smooth", block: "nearest" })
-      })
+        setSelection({ canvasId, stickerId })
+        requestAnimationFrame(() => {
+          document.querySelector<HTMLElement>(`[data-canvas-id="${canvasId}"]`)
+            ?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+        })
+      }
     },
     [activeCanvasId, commit]
   )
@@ -315,24 +318,24 @@ export default function Page() {
         }
         const canvasId = card.dataset.canvasId
         if (!canvasId) continue
-        const x = clientX - (rect.left + rect.width / 2)
-        const y = clientY - (rect.top + rect.height / 2)
+        // Card has logical width 300; rect.width reflects CSS zoom. Convert
+        // the viewport-px drop offset into logical coords so the sticker
+        // lands where the user dropped it.
+        const scale = rect.width / 300 || 1
+        const x = (clientX - (rect.left + rect.width / 2)) / scale
+        const y = (clientY - (rect.top + rect.height / 2)) / scale
+        const stickerId = crypto.randomUUID()
         commit()
         setCanvases((prev) =>
           prev.map((c) =>
             c.id === canvasId
-              ? {
-                  ...c,
-                  stickers: [
-                    ...c.stickers,
-                    buildSticker(emoji, x, y, nextZIndex(c.stickers)),
-                  ],
-                }
+              ? { ...c, stickers: [...c.stickers, buildSticker(stickerId, emoji, x, y, nextZIndex(c.stickers))] }
               : c
           )
         )
         haptic("light")
         setActiveCanvasId(canvasId)
+        setSelection({ canvasId, stickerId })
         return true
       }
       return false
@@ -342,6 +345,12 @@ export default function Page() {
 
   return (
     <div className="relative h-full">
+      <ZoomControls
+        zoom={zoom}
+        onZoomIn={() => setZoom((z) => nextZoom(z))}
+        onZoomOut={() => setZoom((z) => prevZoom(z))}
+        onReset={() => setZoom(ZOOM_DEFAULT)}
+      />
       <TopBar
         canUndo={canUndo}
         canRedo={canRedo}
@@ -350,15 +359,22 @@ export default function Page() {
       />
       <ResizablePanelGroup orientation="vertical" className="h-full">
         <ResizablePanel id="canvas" defaultSize="60%" minSize="30%">
-          <div className="h-full w-full overflow-y-auto overflow-x-hidden bg-muted dark:bg-background">
-            <div className="flex min-h-full w-full items-center p-6">
-              <div className="grid w-full grid-cols-[repeat(auto-fit,300px)] justify-center gap-6">
+          <div className="h-full w-full overflow-auto bg-muted dark:bg-background">
+            <div className="flex min-h-full min-w-full w-fit items-center p-6">
+              <div
+                className="grid min-w-full w-fit justify-center"
+                style={{
+                  gridTemplateColumns: `repeat(auto-fit, ${300 * zoom}px)`,
+                  gap: `${24 * zoom}px`,
+                }}
+              >
                 {canvases.map((canvas) => (
                   <StickerCanvas
                     key={canvas.id}
                     canvasId={canvas.id}
                     stickers={canvas.stickers}
                     isActive={canvas.id === activeCanvasId}
+                    zoom={zoom}
                     selectedStickerId={
                       selection?.canvasId === canvas.id ? selection.stickerId : null
                     }
@@ -370,7 +386,7 @@ export default function Page() {
                     onCommit={commit}
                   />
                 ))}
-                <AddCanvasButton onAdd={addCanvas} />
+                <AddCanvasButton onAdd={addCanvas} zoom={zoom} />
               </div>
             </div>
           </div>
@@ -392,9 +408,9 @@ function jitterY() {
   return Math.random() * 60 - 30
 }
 
-function buildSticker(emoji: string, x: number, y: number, zIndex: number): StickerData {
+function buildSticker(id: string, emoji: string, x: number, y: number, zIndex: number): StickerData {
   return {
-    id: crypto.randomUUID(),
+    id,
     emoji,
     x,
     y,
