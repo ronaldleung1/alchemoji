@@ -6,7 +6,6 @@ import {
   EmojiPicker,
   EmojiPickerSearch,
   EmojiPickerContent,
-  EmojiPickerFooter,
   EmojiPickerDragProvider,
 } from "@/components/ui/emoji-picker"
 import { haptic } from "@/lib/haptics"
@@ -141,7 +140,6 @@ export function EmojiTray({ onSelectEmoji, onDropEmojiAt }: EmojiTrayProps) {
         >
           <EmojiPickerSearch placeholder="Search emojis…" />
           <EmojiPickerContent />
-          <EmojiPickerFooter />
         </EmojiPicker>
       </EmojiPickerDragProvider>
 

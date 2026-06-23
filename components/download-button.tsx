@@ -35,6 +35,7 @@ interface DownloadButtonProps {
 export default function DownloadButton({ stickers, onDelete, onDuplicate, isActive }: Readonly<DownloadButtonProps>) {
   const [copied, setCopied] = useState(false)
   const canShare = useSyncExternalStore(subscribeNoop, getCanShareSnapshot, getServerCanShareSnapshot)
+  const isEmpty = stickers.length === 0
 
   const buildCanvas = useCallback(() => {
     if (stickers.length === 0) return null
@@ -236,23 +237,23 @@ export default function DownloadButton({ stickers, onDelete, onDuplicate, isActi
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side="bottom">
         {canShare && (
-          <DropdownMenuItem onClick={handleShare}>
+          <DropdownMenuItem onClick={handleShare} disabled={isEmpty}>
             <Share size={13} />
             Share
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem onClick={handleCopy}>
+        <DropdownMenuItem onClick={handleCopy} disabled={isEmpty}>
           {copied ? <Check size={13} /> : <Copy size={13} />}
           {copied ? "Copied!" : "Copy image"}
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleDownload}>
+        <DropdownMenuItem onClick={handleDownload} disabled={isEmpty}>
           <Download size={13} />
           Download
         </DropdownMenuItem>
         {onDuplicate && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onDuplicate}>
+            <DropdownMenuItem onClick={onDuplicate} disabled={isEmpty}>
               <CopyPlus size={13} />
               Duplicate
             </DropdownMenuItem>

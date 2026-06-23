@@ -9,6 +9,7 @@ import {
 import { LoaderIcon, SearchIcon, XIcon } from "lucide-react";
 import * as React from "react";
 
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type EmojiPointerDownHandler = (emoji: string, e: React.PointerEvent) => void;
@@ -87,6 +88,8 @@ function EmojiPickerSearch({
           <XIcon className="size-4" />
         </button>
       )}
+      <div className="ml-1 h-5 w-px shrink-0 bg-border" />
+      <EmojiPickerSkinTone />
     </div>
   );
 }
@@ -172,57 +175,52 @@ function EmojiPickerContent({
   );
 }
 
+const SKIN_TONE_COLORS: Record<string, string> = {
+  none: "#FFCC4D",
+  light: "#FADCBC",
+  "medium-light": "#E0BB95",
+  medium: "#D08B5B",
+  "medium-dark": "#A56635",
+  dark: "#6E4A35",
+};
+
 function EmojiPickerSkinTone({
   className,
   ...props
-}: React.ComponentProps<typeof EmojiPickerPrimitive.SkinToneSelector>) {
+}: React.ComponentProps<"button">) {
   return (
-    <EmojiPickerPrimitive.SkinToneSelector
-      className={cn(
-        "flex size-8 items-center justify-center rounded-md text-base transition-colors hover:bg-muted",
-        className
-      )}
-      data-slot="emoji-picker-skin-tone"
-      {...props}
-    />
-  );
-}
+    <EmojiPickerPrimitive.SkinTone>
+      {({ skinTone, setSkinTone, skinToneVariations }) => {
+        const handleClick = () => {
+          const currentIndex = skinToneVariations.findIndex(
+            (variation) => variation.skinTone === skinTone
+          );
+          const next =
+            skinToneVariations[
+              (currentIndex + 1) % skinToneVariations.length
+            ];
+          setSkinTone(next.skinTone);
+        };
 
-function EmojiPickerFooter({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
-  return (
-    <div
-      className={cn(
-        "flex w-full min-w-0 items-center gap-1 border-t px-2 py-1.5",
-        className
-      )}
-      data-slot="emoji-picker-footer"
-      {...props}
-    >
-      <EmojiPickerPrimitive.ActiveEmoji>
-        {({ emoji }) =>
-          emoji ? (
-            <>
-              <div className="flex size-8 flex-none items-center justify-center text-lg">
-                {emoji.emoji}
-              </div>
-              <span className="text-secondary-foreground truncate text-xs">
-                {emoji.label}
-              </span>
-            </>
-          ) : (
-            <span className="text-muted-foreground ml-1.5 flex h-8 items-center truncate text-xs">
-              Select an emoji…
-            </span>
-          )
-        }
-      </EmojiPickerPrimitive.ActiveEmoji>
-      <div className="ml-auto">
-        <EmojiPickerSkinTone />
-      </div>
-    </div>
+        return (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={handleClick}
+            aria-label={`Skin tone: ${skinTone}`}
+            className={cn("shrink-0", className)}
+            data-slot="emoji-picker-skin-tone"
+            {...props}
+          >
+            <span
+              className="size-4 rounded-full"
+              style={{ backgroundColor: SKIN_TONE_COLORS[skinTone] }}
+            />
+          </Button>
+        );
+      }}
+    </EmojiPickerPrimitive.SkinTone>
   );
 }
 
@@ -230,7 +228,6 @@ export {
   EmojiPicker,
   EmojiPickerSearch,
   EmojiPickerContent,
-  EmojiPickerFooter,
   EmojiPickerSkinTone,
   EmojiPickerDragProvider,
 };

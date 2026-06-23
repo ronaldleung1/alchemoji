@@ -366,6 +366,7 @@ export default function Page() {
                 style={{
                   gridTemplateColumns: `repeat(auto-fit, ${300 * zoom}px)`,
                   gap: `${24 * zoom}px`,
+                  justifyContent: "safe center",
                 }}
               >
                 {canvases.map((canvas) => (
@@ -388,6 +389,7 @@ export default function Page() {
                 ))}
                 <AddCanvasButton onAdd={addCanvas} zoom={zoom} />
               </div>
+              <div className="w-6 shrink-0" aria-hidden="true" />
             </div>
           </div>
         </ResizablePanel>
