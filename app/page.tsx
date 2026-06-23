@@ -360,9 +360,9 @@ export default function Page() {
       <ResizablePanelGroup orientation="vertical" className="h-full">
         <ResizablePanel id="canvas" defaultSize="60%" minSize="30%">
           <div className="h-full w-full overflow-auto bg-muted dark:bg-background">
-            <div className="flex min-h-full min-w-full w-fit items-center p-6">
+            <div className="flex min-h-full w-full items-center p-6">
               <div
-                className="grid min-w-full w-fit justify-center"
+                className="grid w-full justify-center"
                 style={{
                   gridTemplateColumns: `repeat(auto-fit, ${300 * zoom}px)`,
                   gap: `${24 * zoom}px`,
