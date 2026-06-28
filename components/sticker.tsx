@@ -242,23 +242,19 @@ export function Sticker({
         {/* Emoji */}
         <span className="pointer-events-none">{sticker.emoji}</span>
 
-        {/* Scale + Rotate handle — outer div for 40px hit area, inner for visual */}
-        <div
+        {/* Scale + Rotate handle */}
+        <motion.div
           data-handle
           onPointerDown={handleTransformStart}
-          className="absolute -right-5.5 -bottom-5.5 flex h-10 w-10 cursor-grab active:cursor-grabbing items-center justify-center"
+          className="absolute -right-2 -bottom-2 flex h-3 w-3 cursor-grab active:cursor-grabbing items-center justify-center rounded-full border border-border bg-foreground shadow-sm"
           style={{
             opacity: isSelected ? 1 : 0,
             pointerEvents: isSelected ? "auto" : "none",
             zIndex: 1,
           }}
-        >
-          <motion.div
-            className="h-3 w-3 rounded-full border border-border bg-foreground shadow-sm"
-            whileHover={{ scale: 1.25 }}
-            transition={{ type: "spring", stiffness: 400, damping: 20 }}
-          />
-        </div>
+          whileHover={{ scale: 1.25 }}
+          transition={{ type: "spring", stiffness: 400, damping: 20 }}
+        />
       </div>
     </motion.div>
   )
