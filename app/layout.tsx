@@ -2,6 +2,7 @@ import { Geist_Mono, Public_Sans, DM_Sans } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { TabNav } from "@/components/tab-nav"
 import { cn } from "@/lib/utils";
 
 const dmSansHeading = DM_Sans({subsets:['latin'],variable:'--font-heading'});
@@ -28,7 +29,10 @@ export default function RootLayout({
         <title>Alchemoji 🧪</title>
       </head>
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <TabNav />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   )
